@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 08, 2026 at 04:15 AM
+-- Generation Time: Jun 18, 2026 at 12:47 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,8 @@ SET time_zone = "+00:00";
 --
 -- Database: `digitaria_dashboard`
 --
+CREATE DATABASE IF NOT EXISTS `digitaria_dashboard` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `digitaria_dashboard`;
 
 -- --------------------------------------------------------
 
@@ -27,6 +29,7 @@ SET time_zone = "+00:00";
 -- Table structure for table `activity_logs`
 --
 
+DROP TABLE IF EXISTS `activity_logs`;
 CREATE TABLE `activity_logs` (
   `id` int(11) NOT NULL,
   `user_id` int(11) DEFAULT NULL,
@@ -110,7 +113,24 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `module`, `description`,
 (65, 1, 'update', 'contents', 'Mengubah content: Footer - Contact', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 15:55:24'),
 (66, 1, 'update', 'contents', 'Mengubah content: Footer - Contact', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-15 15:55:43'),
 (67, 1, 'login', 'auth', 'User login berhasil.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36', '2026-05-16 17:54:24'),
-(68, 1, 'login', 'auth', 'User login berhasil.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-08 02:00:57');
+(68, 1, 'login', 'auth', 'User login berhasil.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-08 02:00:57'),
+(69, 1, 'update', 'profile', 'Mengubah profil user.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-08 03:40:32'),
+(70, 1, 'logout', 'auth', 'User logout.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-08 03:40:37'),
+(71, 1, 'login', 'auth', 'User login berhasil.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-09 17:34:44'),
+(72, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 54', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-09 17:37:57'),
+(73, 1, 'update', 'products', 'Mengubah produk: VOL.TECH Access Point Pro', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-09 17:38:08'),
+(74, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 60', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-09 17:38:17'),
+(75, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 59', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-09 17:38:25'),
+(76, 1, 'login', 'auth', 'User login berhasil.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 15:34:50'),
+(77, 1, 'create', 'products', 'Menambahkan produk: Test product', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 15:35:47'),
+(78, 1, 'update', 'profile', 'Mengubah profil user.', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 15:39:06'),
+(79, 1, 'update', 'products', 'Mengubah status best seller produk ID: 55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 15:45:34'),
+(80, 1, 'update', 'products', 'Mengubah status best seller produk ID: 55', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 15:45:36'),
+(81, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 61', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 16:36:02'),
+(82, 1, 'update', 'products', 'Mengubah produk: Test product', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 16:36:16'),
+(83, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 62', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 17:03:48'),
+(84, 1, 'upload_gallery_images', 'products', 'Upload gallery image produk: Test product', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 17:04:01'),
+(85, 1, 'delete_image', 'products', 'Menghapus gambar produk ID: 66', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36', '2026-06-14 17:04:23');
 
 -- --------------------------------------------------------
 
@@ -118,6 +138,7 @@ INSERT INTO `activity_logs` (`id`, `user_id`, `action`, `module`, `description`,
 -- Table structure for table `banners`
 --
 
+DROP TABLE IF EXISTS `banners`;
 CREATE TABLE `banners` (
   `id` int(11) NOT NULL,
   `title` varchar(200) NOT NULL,
@@ -148,6 +169,7 @@ INSERT INTO `banners` (`id`, `title`, `image`, `link_url`, `placement`, `status`
 -- Table structure for table `brands`
 --
 
+DROP TABLE IF EXISTS `brands`;
 CREATE TABLE `brands` (
   `id` int(11) NOT NULL,
   `name` varchar(150) NOT NULL,
@@ -174,6 +196,7 @@ INSERT INTO `brands` (`id`, `name`, `slug`, `logo`, `description`, `status`, `cr
 -- Table structure for table `categories`
 --
 
+DROP TABLE IF EXISTS `categories`;
 CREATE TABLE `categories` (
   `id` int(11) NOT NULL,
   `name` varchar(150) NOT NULL,
@@ -207,6 +230,7 @@ INSERT INTO `categories` (`id`, `name`, `slug`, `description`, `status`, `create
 -- Table structure for table `contents`
 --
 
+DROP TABLE IF EXISTS `contents`;
 CREATE TABLE `contents` (
   `id` int(11) NOT NULL,
   `title` varchar(200) NOT NULL,
@@ -244,6 +268,7 @@ INSERT INTO `contents` (`id`, `title`, `slug`, `type`, `body`, `status`, `create
 -- Table structure for table `content_images`
 --
 
+DROP TABLE IF EXISTS `content_images`;
 CREATE TABLE `content_images` (
   `id` int(11) NOT NULL,
   `content_id` int(11) NOT NULL,
@@ -258,6 +283,7 @@ CREATE TABLE `content_images` (
 -- Table structure for table `media_files`
 --
 
+DROP TABLE IF EXISTS `media_files`;
 CREATE TABLE `media_files` (
   `id` int(11) NOT NULL,
   `title` varchar(200) DEFAULT NULL,
@@ -274,6 +300,7 @@ CREATE TABLE `media_files` (
 -- Table structure for table `products`
 --
 
+DROP TABLE IF EXISTS `products`;
 CREATE TABLE `products` (
   `id` int(11) NOT NULL,
   `name` varchar(200) NOT NULL,
@@ -349,8 +376,9 @@ INSERT INTO `products` (`id`, `name`, `sku`, `category`, `price`, `image`, `stoc
 (51, 'VOL.TECH Fiber Patch Cord', 'TW-VOLTECH-051', NULL, 0.00, '../produk/1.png', 0, 'active', '<p>VOL.TECH Fiber Patch Cord adalah produk fiber accessories dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 3, 0, NULL),
 (52, 'VOL.TECH Optical Splitter 1:16', 'TW-VOLTECH-052', NULL, 0.00, '../produk/2.png', 0, 'active', '<p>VOL.TECH Optical Splitter 1:16 adalah produk fiber accessories dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 3, 0, NULL),
 (53, 'VOL.TECH Outdoor CPE AC', 'TW-VOLTECH-053', NULL, 0.00, '../produk/3.png', 0, 'active', '<p>VOL.TECH Outdoor CPE AC adalah produk wireless outdoor dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 12, 0, NULL),
-(54, 'VOL.TECH Access Point Pro', 'TW-VOLTECH-054', NULL, 0.00, '../produk/4.png', 0, 'active', '<p>VOL.TECH Access Point Pro adalah produk access point dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 1, 0, NULL),
-(55, 'VOL.TECH Rackmount PDU', 'TW-VOLTECH-055', NULL, 0.00, '../produk/5.png', 0, 'active', '<p>VOL.TECH Rackmount PDU adalah produk rack accessories dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 8, 0, NULL);
+(54, 'VOL.TECH Access Point Pro', 'TW-VOLTECH-054', NULL, 0.00, '../produk/4.png', 0, 'active', '<p>VOL.TECH Access Point Pro adalah produk access point dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 1, 0, '2026-06-09 17:38:08'),
+(55, 'VOL.TECH Rackmount PDU', 'TW-VOLTECH-055', NULL, 0.00, '../produk/5.png', 0, 'active', '<p>VOL.TECH Rackmount PDU adalah produk rack accessories dari brand VOL.TECH yang tersedia dalam katalog Teakwave.</p><p>Data produk ini disinkronkan dari listing frontend agar katalog di website dan dashboard backend sama.</p>', '2026-05-16 17:21:07', 4, 8, 0, '2026-06-14 15:45:36'),
+(56, 'Test product', '', NULL, 800000.00, '../uploads/test-product-product-main-20260614183616-a378f7.webp', 200, 'active', '<p><br></p>', '2026-06-14 15:35:47', 1, 1, 1, '2026-06-14 16:36:16');
 
 -- --------------------------------------------------------
 
@@ -358,6 +386,7 @@ INSERT INTO `products` (`id`, `name`, `sku`, `category`, `price`, `image`, `stoc
 -- Table structure for table `product_images`
 --
 
+DROP TABLE IF EXISTS `product_images`;
 CREATE TABLE `product_images` (
   `id` int(11) NOT NULL,
   `product_id` int(11) NOT NULL,
@@ -424,8 +453,15 @@ INSERT INTO `product_images` (`id`, `product_id`, `image_path`, `is_primary`, `c
 (51, 51, '../produk/1.png', 1, '2026-05-16 17:21:08'),
 (52, 52, '../produk/2.png', 1, '2026-05-16 17:21:08'),
 (53, 53, '../produk/3.png', 1, '2026-05-16 17:21:08'),
-(54, 54, '../produk/4.png', 1, '2026-05-16 17:21:08'),
-(55, 55, '../produk/5.png', 1, '2026-05-16 17:21:08');
+(55, 55, '../produk/5.png', 1, '2026-05-16 17:21:08'),
+(56, 54, '../uploads/vol-tech-access-point-pro-product-gallery-1-20260609193808-6e719a.webp', 0, '2026-06-09 17:38:08'),
+(57, 54, '../uploads/vol-tech-access-point-pro-product-gallery-2-20260609193808-1c557a.webp', 0, '2026-06-09 17:38:08'),
+(58, 54, '../uploads/vol-tech-access-point-pro-product-gallery-3-20260609193808-a8588a.webp', 0, '2026-06-09 17:38:08'),
+(63, 56, '../uploads/test-product-product-gallery-2-20260614183616-5d8e4c.webp', 0, '2026-06-14 15:35:47'),
+(64, 56, '../uploads/test-product-product-gallery-3-20260614183616-80b5cd.webp', 0, '2026-06-14 15:35:47'),
+(65, 56, '../uploads/test-product-product-gallery-4-20260614183616-169e68.jpg', 0, '2026-06-14 16:36:16'),
+(67, 56, '../uploads/test-product-product-gallery-2-20260614190401-b3bd36.png', 0, '2026-06-14 17:04:01'),
+(68, 56, '../uploads/test-product-product-gallery-3-20260614190401-6f5460.png', 0, '2026-06-14 17:04:01');
 
 -- --------------------------------------------------------
 
@@ -433,6 +469,7 @@ INSERT INTO `product_images` (`id`, `product_id`, `image_path`, `is_primary`, `c
 -- Table structure for table `roles`
 --
 
+DROP TABLE IF EXISTS `roles`;
 CREATE TABLE `roles` (
   `id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
@@ -457,6 +494,7 @@ INSERT INTO `roles` (`id`, `name`, `slug`, `created_at`) VALUES
 -- Table structure for table `role_permissions`
 --
 
+DROP TABLE IF EXISTS `role_permissions`;
 CREATE TABLE `role_permissions` (
   `id` int(11) NOT NULL,
   `role_id` int(11) NOT NULL,
@@ -518,6 +556,7 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `page_key`, `created_at`) VALUE
 -- Table structure for table `users`
 --
 
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `role_id` int(11) NOT NULL,
@@ -534,7 +573,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `role_id`, `name`, `email`, `password`, `avatar`, `status`, `created_at`) VALUES
-(1, 1, 'Seira', 'admin@digitaria.id', '$2y$10$ds9qt.vDvwqi.T2ElQLVn.SKdz0Wh31qmecBQVrqpukLe.PW8rmkW', '../uploads/avatar_6a0618210ca993.92713686.jpg', 'active', '2026-05-14 17:56:19'),
+(1, 1, 'Seira', 'admin@digitaria.id', '$2y$10$ds9qt.vDvwqi.T2ElQLVn.SKdz0Wh31qmecBQVrqpukLe.PW8rmkW', '../uploads/avatar_6a2ecb1a7d1fe6.64054107.jpg', 'active', '2026-05-14 17:56:19'),
 (3, 4, 'Aries Riyanto', 'Syiqma84@gmail.com', '$2y$10$fcEHPYPLDL5laOF7zvUySOH.z5bhekPw7BlioZK.wV6OiXM12o3eC', NULL, 'active', '2026-05-14 18:09:50'),
 (4, 4, 'jayus', 'jayus@digitaria.id', '$2y$10$OOADhUfhN7oLqVwXZcI1JeneYniTx4dV5HggqqTMDuhEjoMCtCiwS', NULL, 'active', '2026-05-14 19:58:11');
 
@@ -544,6 +583,7 @@ INSERT INTO `users` (`id`, `role_id`, `name`, `email`, `password`, `avatar`, `st
 -- Table structure for table `website_settings`
 --
 
+DROP TABLE IF EXISTS `website_settings`;
 CREATE TABLE `website_settings` (
   `id` int(11) NOT NULL,
   `setting_key` varchar(120) NOT NULL,
@@ -680,7 +720,7 @@ ALTER TABLE `website_settings`
 -- AUTO_INCREMENT for table `activity_logs`
 --
 ALTER TABLE `activity_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
 
 --
 -- AUTO_INCREMENT for table `banners`
@@ -722,13 +762,13 @@ ALTER TABLE `media_files`
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
 
 --
 -- AUTO_INCREMENT for table `product_images`
 --
 ALTER TABLE `product_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `roles`
