@@ -1,7 +1,7 @@
 <?php
 $host = 'localhost';
-$dbname = 'digitaria_dashboard';
-$username = 'root';
+$dbname = '';
+$username = '';
 $password = '';
 
 try {
