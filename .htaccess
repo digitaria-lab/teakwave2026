@@ -1,0 +1,19 @@
+# SEO-friendly product detail URL v2
+# Example:
+# /produk-edgerouter-x-gigabit
+# will be routed to:
+# /produk-detail.php?slug=edgerouter-x-gigabit
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^produk-([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
+</IfModule>
+
+# SEO-friendly product detail URL
+# Example:
+# /produk-detail/unifi-u6-plus-indoor-ap
+# will be routed to:
+# /produk-detail.php?slug=unifi-u6-plus-indoor-ap
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule ^produk-detail/([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
+</IfModule>

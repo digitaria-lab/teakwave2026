@@ -1,0 +1,245 @@
+<?php
+require_once 'auth/check.php';
+$page_title = 'Website Front Settings';
+
+$timezones = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
+
+    try {
+        $site_name = sanitize_plain_text($_POST['site_name'] ?? '', 150);
+        $meta_title = sanitize_plain_text($_POST['meta_title'] ?? '', 180);
+        $meta_description = sanitize_plain_text($_POST['meta_description'] ?? '', 320);
+        $meta_keywords = sanitize_plain_text($_POST['meta_keywords'] ?? '', 500);
+        $timezone = sanitize_plain_text($_POST['timezone'] ?? 'Asia/Jakarta', 120);
+        $date_format = sanitize_plain_text($_POST['date_format'] ?? 'd M Y', 50);
+        $time_format = sanitize_plain_text($_POST['time_format'] ?? 'H:i', 50);
+        $upload_max_filesize_mb = clean_decimal($_POST['upload_max_filesize_mb'] ?? 5, 5);
+        if ($upload_max_filesize_mb <= 0) $upload_max_filesize_mb = 5;
+        if ($upload_max_filesize_mb > 100) $upload_max_filesize_mb = 100;
+        $upload_allowed_extensions = normalize_upload_extensions($_POST['upload_allowed_extensions'] ?? 'jpg,jpeg,png,gif,webp,pdf,ico');
+
+        if (!in_array($timezone, $timezones, true)) {
+            $timezone = 'Asia/Jakarta';
+        }
+
+        if ($site_name === '') {
+            throw new Exception('Nama web tidak boleh kosong.');
+        }
+
+        update_website_setting('site_name', $site_name, 'text');
+        update_website_setting('meta_title', $meta_title, 'text');
+        update_website_setting('meta_description', $meta_description, 'textarea');
+        update_website_setting('meta_keywords', $meta_keywords, 'textarea');
+        update_website_setting('timezone', $timezone, 'text');
+        update_website_setting('date_format', $date_format, 'text');
+        update_website_setting('time_format', $time_format, 'text');
+        update_website_setting('upload_max_filesize_mb', (string) $upload_max_filesize_mb, 'number');
+        update_website_setting('upload_allowed_extensions', $upload_allowed_extensions, 'textarea');
+
+        $favicon = upload_favicon_file('favicon');
+
+        if ($favicon) {
+            update_website_setting('favicon', $favicon, 'file');
+        }
+
+        log_activity('update', 'website-settings', 'Mengubah konfigurasi website front.');
+        redirect('website-settings.php?updated=1');
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+}
+
+$site_name = get_website_setting('site_name', 'Digitaria');
+$meta_title = get_website_setting('meta_title', 'Digitaria - Web Design, Web Developer & Digital Agency Surabaya');
+$meta_description = get_website_setting('meta_description', '');
+$meta_keywords = get_website_setting('meta_keywords', '');
+$favicon = get_website_setting('favicon', '');
+$timezone = get_website_setting('timezone', 'Asia/Jakarta');
+$date_format = get_website_setting('date_format', 'd M Y');
+$time_format = get_website_setting('time_format', 'H:i');
+$upload_max_filesize_mb = get_website_setting('upload_max_filesize_mb', '5');
+$upload_allowed_extensions = get_website_setting('upload_allowed_extensions', 'jpg,jpeg,png,gif,webp,pdf,ico');
+
+try {
+    $previewDate = new DateTime('now', new DateTimeZone($timezone));
+} catch (Exception $e) {
+    $previewDate = new DateTime('now', new DateTimeZone('Asia/Jakarta'));
+}
+
+include 'includes/header.php';
+include 'includes/sidebar.php';
+?>
+<main class="main-content">
+<?php include 'includes/topbar.php'; ?>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card soft-card">
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-0">Konfigurasi Website Front</h5>
+                        <small class="text-muted">Atur identitas, meta SEO, favicon, dan setting jam website.</small>
+                    </div>
+                    <button type="submit" form="websiteSettingsForm" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Save Settings
+                    </button>
+                </div>
+
+                <?php if(!empty($_GET['updated'])): ?>
+                    <div class="alert alert-success">Konfigurasi website berhasil diperbarui.</div>
+                <?php endif; ?>
+
+                <?php if(!empty($error)): ?>
+                    <div class="alert alert-danger"><?php echo e($error); ?></div>
+                <?php endif; ?>
+
+                <form id="websiteSettingsForm" method="post" enctype="multipart/form-data" autocomplete="off">
+                    <?php csrf_field(); ?>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Nama Web</label>
+                            <input name="site_name" class="form-control" required maxlength="150" value="<?php echo e($site_name); ?>">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Meta Title</label>
+                            <input name="meta_title" class="form-control" maxlength="180" value="<?php echo e($meta_title); ?>">
+                            <small class="text-muted">Rekomendasi SEO: 50–60 karakter, tetapi boleh lebih sesuai kebutuhan.</small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Meta Description</label>
+                            <textarea name="meta_description" rows="4" class="form-control" maxlength="320"><?php echo e($meta_description); ?></textarea>
+                            <small class="text-muted">Rekomendasi SEO: 140–160 karakter.</small>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Meta Keyword</label>
+                            <textarea name="meta_keywords" rows="3" class="form-control" maxlength="500"><?php echo e($meta_keywords); ?></textarea>
+                            <small class="text-muted">Pisahkan keyword dengan koma. Contoh: web design, digital agency, surabaya</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Upload / Edit Favicon</label>
+                            <input name="favicon" type="file" class="form-control" accept=".ico,.png,.jpg,.jpeg,.webp">
+                            <small class="text-muted">Format aman: ICO, PNG, JPG, WEBP. Maksimal 2MB.</small>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Current Favicon</label>
+                            <div class="favicon-preview-box">
+                                <?php if($favicon): ?>
+                                    <img src="<?php echo e($favicon); ?>" alt="Favicon">
+                                    <code><?php echo e($favicon); ?></code>
+                                <?php else: ?>
+                                    <span class="text-muted">Belum ada favicon.</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+
+                        <div class="col-12">
+                            <div class="upload-settings-panel">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-cloud-arrow-up"></i> Upload Settings
+                                </h6>
+                                <p class="text-muted small mb-3">
+                                    Setting ini berlaku untuk upload gambar Product, Content, Media, Banner, Avatar, dan Favicon.
+                                </p>
+
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Maksimal File Size</label>
+                                        <div class="input-group">
+                                            <input name="upload_max_filesize_mb" type="number" min="0.1" max="100" step="0.1" class="form-control" value="<?php echo e($upload_max_filesize_mb); ?>">
+                                            <span class="input-group-text">MB</span>
+                                        </div>
+                                        <small class="text-muted">Contoh: 2, 5, 10. Maksimal 100MB.</small>
+                                    </div>
+
+                                    <div class="col-md-8">
+                                        <label class="form-label">Extension yang Boleh Diupload</label>
+                                        <input name="upload_allowed_extensions" class="form-control" value="<?php echo e($upload_allowed_extensions); ?>" placeholder="jpg,jpeg,png,gif,webp,pdf,ico">
+                                        <small class="text-muted">
+                                            Pisahkan dengan koma. Extension aman yang didukung: jpg, jpeg, png, gif, webp, pdf, ico.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Setting Jam / Timezone</label>
+                            <select name="timezone" class="form-select">
+                                <?php foreach($timezones as $tz): ?>
+                                    <option value="<?php echo e($tz); ?>" <?php echo $timezone === $tz ? 'selected' : ''; ?>>
+                                        <?php echo e($tz); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Date Format</label>
+                            <input name="date_format" class="form-control" value="<?php echo e($date_format); ?>">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Time Format</label>
+                            <input name="time_format" class="form-control" value="<?php echo e($time_format); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-action-bar">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Save Settings
+                        </button>
+                        <a href="index.php" class="btn btn-light">Back to Dashboard</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card soft-card">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Preview SEO</h5>
+
+                <div class="seo-preview">
+                    <div class="seo-preview-title"><?php echo e($meta_title ?: $site_name); ?></div>
+                    <div class="seo-preview-url">https://domainanda.com/</div>
+                    <p><?php echo e($meta_description ?: 'Meta description website akan tampil di sini.'); ?></p>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold">Preview Jam</h6>
+                <div class="time-preview">
+                    <i class="bi bi-clock-history"></i>
+                    <div>
+                        <strong><?php echo e($previewDate->format($date_format . ' ' . $time_format)); ?></strong><br>
+                        <small class="text-muted"><?php echo e($timezone); ?></small>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold">Cara Pakai di Front Website</h6>
+                <p class="text-muted small mb-2">Ambil setting dengan helper:</p>
+                <pre class="settings-code">get_website_setting('site_name');
+get_website_setting('meta_title');
+get_website_setting('favicon');
+get_website_setting('upload_max_filesize_mb');
+get_website_setting('upload_allowed_extensions');</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+<?php include 'includes/footer.php'; ?>
