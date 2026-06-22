@@ -156,7 +156,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/1.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -164,7 +164,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/2.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -172,7 +172,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/3.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -180,7 +180,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/4.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -188,7 +188,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/5.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                     </div>
@@ -200,7 +200,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/6.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -208,7 +208,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/7.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -216,7 +216,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/1.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -224,7 +224,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/2.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                         <div class="col-6 col-lg">
@@ -232,7 +232,7 @@ require __DIR__ . '/includes/header.php';
                                 <div class="product-img">
                                     <img src="./produk/3.png" />
                                 </div>
-                                <div class="product-name">Nama Produk</div>
+                                <div class="product-name">Produk Teakwave</div>
                             </div>
                         </div>
                     </div>
