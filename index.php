@@ -281,12 +281,12 @@ require __DIR__ . '/includes/header.php';
         <div class="marketplace-list text-start">
             <div class="market-row reveal slide-left">
                 <div>Belanja produk jaringan resmi Teakwave melalui <strong>Tokopedia.</strong></div>
-                <a class="market-btn tokopedia" href="#" rel="noopener" target="_blank"><img
+                <a class="market-btn tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener" target="_blank"><img
                         src="./assets/img/logo-tokopedia.png" /></a>
             </div>
             <div class="market-row reveal slide-right">
                 <div>Temukan berbagai perangkat jaringan dengan harga terbaik di <strong>Shopee.</strong></div>
-                <a class="market-btn shopee" href="#" rel="noopener" target="_blank"><img
+                <a class="market-btn shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                         src="./assets/img/logo-shopee.png" /></a>
             </div>
             <div class="market-row reveal slide-left">
