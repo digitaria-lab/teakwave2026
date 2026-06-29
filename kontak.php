@@ -58,9 +58,9 @@ require __DIR__ . '/includes/header.php';
                         kami.</p>
                 </div>
                 <div aria-label="Link pembelian produk" class="purchase-actions">
-                    <a aria-label="Tokopedia" class="purchase-action tokopedia" href="#" rel="noopener"
+                    <a aria-label="Tokopedia" class="purchase-action tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener"
                         target="_blank"><img src="./assets/img/icon-tokopedia.png" /></a>
-                    <a aria-label="Shopee" class="purchase-action shopee" href="#" rel="noopener" target="_blank"><img
+                    <a aria-label="Shopee" class="purchase-action shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                             src="./assets/img/icon-shopee.png" /></a>
                     <a aria-label="WhatsApp" class="purchase-action whatsapp" href="https://wa.me/6289527932474"
                         rel="noopener" target="_blank"><img src="./assets/img/icon-whatsapp.png" /></a>
