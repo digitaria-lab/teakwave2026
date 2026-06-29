@@ -72,7 +72,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="col-md-4 reveal slide-left">
                         <div class="market-card-mini">
                             <p>Belanja produk jaringan resmi Teakwave melalui <strong>Tokopedia.</strong></p>
-                            <a class="market-btn" href="#" rel="noopener" target="_blank"><img
+                            <a class="market-btn" href="https://www.tokopedia.com/teakwave" rel="noopener" target="_blank"><img
                                     src="./assets/img/logo-tokopedia.png" /></a>
                         </div>
                     </div>
@@ -80,7 +80,7 @@ require __DIR__ . '/includes/header.php';
                         <div class="market-card-mini">
                             <p>Temukan berbagai perangkat jaringan dengan harga terbaik di <strong>Shopee.</strong>
                             </p>
-                            <a class="market-btn" href="#" rel="noopener" target="_blank"><img
+                            <a class="market-btn" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                                     src="./assets/img/logo-shopee.png" /></a>
                         </div>
                     </div>
