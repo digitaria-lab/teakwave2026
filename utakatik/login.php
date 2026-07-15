@@ -88,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <button class="btn btn-primary w-100 btn-lg">Login</button>
             </form>
-            <div class="small text-muted mt-4 text-center">Demo: admin@digitaria.id / admin123</div>
         </div>
     </div>
 <script>
