@@ -80,11 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php csrf_field(); ?>
                 <div class="mb-3">
                     <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control form-control-lg" value="admin@digitaria.id" required>
+                    <input type="email" name="email" class="form-control form-control-lg" value="" required>
                 </div>
                 <div class="mb-4">
                     <label class="form-label">Password</label>
-                    <input type="password" name="password" class="form-control form-control-lg" value="admin123" required>
+                    <input type="password" name="password" class="form-control form-control-lg" value="" required>
                 </div>
                 <button class="btn btn-primary w-100 btn-lg">Login</button>
             </form>
