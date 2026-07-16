@@ -54,7 +54,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="col-md-4 reveal slide-left">
                         <div class="market-card-mini">
                             <p>Belanja produk jaringan resmi Teakwave melalui <strong>Tokopedia.</strong></p>
-                            <a class="market-btn" href="#" rel="noopener" target="_blank"><img
+                            <a class="market-btn" data-external-url="tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener" target="_blank"><img
                                     src="./assets/img/logo-tokopedia.png" /></a>
                         </div>
                     </div>
@@ -62,14 +62,14 @@ require __DIR__ . '/includes/header.php';
                         <div class="market-card-mini">
                             <p>Temukan berbagai perangkat jaringan dengan harga terbaik di <strong>Shopee.</strong>
                             </p>
-                            <a class="market-btn" href="#" rel="noopener" target="_blank"><img
+                            <a class="market-btn" data-external-url="shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                                     src="./assets/img/logo-shopee.png" /></a>
                         </div>
                     </div>
                     <div class="col-md-4 reveal slide-right">
                         <div class="market-card-mini">
                             <p>Ingin harga yang lebih kompetitif? Order by <strong>WhatsApp.</strong></p>
-                            <a class="market-btn" href="https://wa.me/6282112345678" rel="noopener" target="_blank"><img
+                            <a class="market-btn" data-external-url="whatsapp" href="https://wa.me/6282112345678" rel="noopener" target="_blank"><img
                                     src="./assets/img/logo-whatsapp.png" /></a>
                         </div>
                     </div>

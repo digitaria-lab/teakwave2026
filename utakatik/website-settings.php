@@ -4,6 +4,48 @@ $page_title = 'Website Front Settings';
 
 $timezones = DateTimeZone::listIdentifiers(DateTimeZone::ALL);
 
+
+function normalize_external_link($value, $label, $allowPhoneNumber = false) {
+    $value = trim((string) $value);
+
+    if ($allowPhoneNumber && preg_match('/^\+?[0-9][0-9\s().-]{7,}$/', $value)) {
+        $digits = preg_replace('/\D+/', '', $value);
+        return 'https://wa.me/' . $digits;
+    }
+
+    if ($value !== '' && !preg_match('#^https?://#i', $value)) {
+        $value = 'https://' . ltrim($value, '/');
+    }
+
+    if ($value === '' || !filter_var($value, FILTER_VALIDATE_URL)) {
+        throw new Exception($label . ' harus berupa URL yang valid.');
+    }
+
+    $scheme = strtolower((string) parse_url($value, PHP_URL_SCHEME));
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        throw new Exception($label . ' hanya boleh menggunakan http atau https.');
+    }
+
+    return $value;
+}
+
+function get_external_link_setting($key, $default, $legacyKey = null) {
+    $candidates = [get_website_setting($key, '')];
+
+    if ($legacyKey) {
+        $candidates[] = get_website_setting($legacyKey, '');
+    }
+
+    foreach ($candidates as $candidate) {
+        $candidate = trim((string) $candidate);
+        if (filter_var($candidate, FILTER_VALIDATE_URL) && preg_match('#^https?://#i', $candidate)) {
+            return $candidate;
+        }
+    }
+
+    return $default;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
 
@@ -19,6 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($upload_max_filesize_mb <= 0) $upload_max_filesize_mb = 5;
         if ($upload_max_filesize_mb > 100) $upload_max_filesize_mb = 100;
         $upload_allowed_extensions = normalize_upload_extensions($_POST['upload_allowed_extensions'] ?? 'jpg,jpeg,png,gif,webp,pdf,ico');
+
+        $tokopedia_url = normalize_external_link($_POST['tokopedia_url'] ?? '', 'URL Tokopedia');
+        $shopee_url = normalize_external_link($_POST['shopee_url'] ?? '', 'URL Shopee');
+        $whatsapp_url = normalize_external_link($_POST['whatsapp_url'] ?? '', 'URL WhatsApp', true);
+        $instagram_url = normalize_external_link($_POST['instagram_url'] ?? '', 'URL Instagram');
+        $facebook_url = normalize_external_link($_POST['facebook_url'] ?? '', 'URL Facebook');
 
         if (!in_array($timezone, $timezones, true)) {
             $timezone = 'Asia/Jakarta';
@@ -37,6 +85,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         update_website_setting('time_format', $time_format, 'text');
         update_website_setting('upload_max_filesize_mb', (string) $upload_max_filesize_mb, 'number');
         update_website_setting('upload_allowed_extensions', $upload_allowed_extensions, 'textarea');
+
+        update_website_setting('tokopedia_url', $tokopedia_url, 'url');
+        update_website_setting('shopee_url', $shopee_url, 'url');
+        update_website_setting('whatsapp_url', $whatsapp_url, 'url');
+        update_website_setting('instagram_url', $instagram_url, 'url');
+        update_website_setting('facebook_url', $facebook_url, 'url');
+
+        // Tetap sinkron dengan key footer lama agar konten lama tidak kembali memakai "#".
+        update_website_setting('footer_instagram_url', $instagram_url, 'url');
+        update_website_setting('footer_facebook_url', $facebook_url, 'url');
 
         $favicon = upload_favicon_file('favicon');
 
@@ -61,6 +119,12 @@ $date_format = get_website_setting('date_format', 'd M Y');
 $time_format = get_website_setting('time_format', 'H:i');
 $upload_max_filesize_mb = get_website_setting('upload_max_filesize_mb', '5');
 $upload_allowed_extensions = get_website_setting('upload_allowed_extensions', 'jpg,jpeg,png,gif,webp,pdf,ico');
+
+$tokopedia_url = get_external_link_setting('tokopedia_url', 'https://www.tokopedia.com/teakwave');
+$shopee_url = get_external_link_setting('shopee_url', 'https://shopee.co.id/teakwave');
+$whatsapp_url = get_external_link_setting('whatsapp_url', 'https://wa.me/6282112345678');
+$instagram_url = get_external_link_setting('instagram_url', 'https://www.instagram.com/teak.wave/', 'footer_instagram_url');
+$facebook_url = get_external_link_setting('facebook_url', 'https://www.facebook.com/teakwave', 'footer_facebook_url');
 
 try {
     $previewDate = new DateTime('now', new DateTimeZone($timezone));
@@ -138,6 +202,47 @@ include 'includes/sidebar.php';
                                 <?php else: ?>
                                     <span class="text-muted">Belum ada favicon.</span>
                                 <?php endif; ?>
+                            </div>
+                        </div>
+
+
+                        <div class="col-12">
+                            <div class="upload-settings-panel">
+                                <h6 class="fw-bold mb-2">
+                                    <i class="bi bi-link-45deg"></i> URL Marketplace, WhatsApp & Media Sosial
+                                </h6>
+                                <p class="text-muted small mb-3">
+                                    Semua tombol dan ikon terkait di website frontend akan memakai URL di bawah ini.
+                                </p>
+
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">URL Tokopedia</label>
+                                        <input name="tokopedia_url" type="url" class="form-control" required maxlength="500"
+                                            value="<?php echo e($tokopedia_url); ?>" placeholder="https://www.tokopedia.com/namatoko">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">URL Shopee</label>
+                                        <input name="shopee_url" type="url" class="form-control" required maxlength="500"
+                                            value="<?php echo e($shopee_url); ?>" placeholder="https://shopee.co.id/namatoko">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">URL / Nomor WhatsApp</label>
+                                        <input name="whatsapp_url" class="form-control" required maxlength="500"
+                                            value="<?php echo e($whatsapp_url); ?>" placeholder="https://wa.me/628123456789 atau 628123456789">
+                                        <small class="text-muted">Nomor WhatsApp juga dapat dimasukkan langsung dan akan diubah menjadi URL wa.me.</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">URL Instagram</label>
+                                        <input name="instagram_url" type="url" class="form-control" required maxlength="500"
+                                            value="<?php echo e($instagram_url); ?>" placeholder="https://www.instagram.com/username/">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">URL Facebook</label>
+                                        <input name="facebook_url" type="url" class="form-control" required maxlength="500"
+                                            value="<?php echo e($facebook_url); ?>" placeholder="https://www.facebook.com/username">
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -235,7 +340,12 @@ include 'includes/sidebar.php';
 get_website_setting('meta_title');
 get_website_setting('favicon');
 get_website_setting('upload_max_filesize_mb');
-get_website_setting('upload_allowed_extensions');</pre>
+get_website_setting('upload_allowed_extensions');
+get_website_setting('tokopedia_url');
+get_website_setting('shopee_url');
+get_website_setting('whatsapp_url');
+get_website_setting('instagram_url');
+get_website_setting('facebook_url');</pre>
             </div>
         </div>
     </div>

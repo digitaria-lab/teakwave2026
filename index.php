@@ -281,17 +281,17 @@ require __DIR__ . '/includes/header.php';
         <div class="marketplace-list text-start">
             <div class="market-row reveal slide-left">
                 <div>Belanja produk jaringan resmi Teakwave melalui <strong>Tokopedia.</strong></div>
-                <a class="market-btn tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener" target="_blank"><img
+                <a class="market-btn tokopedia" data-external-url="tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener" target="_blank"><img
                         src="./assets/img/logo-tokopedia.png" /></a>
             </div>
             <div class="market-row reveal slide-right">
                 <div>Temukan berbagai perangkat jaringan dengan harga terbaik di <strong>Shopee.</strong></div>
-                <a class="market-btn shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
+                <a class="market-btn shopee" data-external-url="shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                         src="./assets/img/logo-shopee.png" /></a>
             </div>
             <div class="market-row reveal slide-left">
                 <div>Ingin harga yang lebih kompetitif? Order by <strong>WhatsApp.</strong></div>
-                <a class="market-btn whatsapp" href="https://wa.me/6282112345678" rel="noopener" target="_blank"><img
+                <a class="market-btn whatsapp" data-external-url="whatsapp" href="https://wa.me/6282112345678" rel="noopener" target="_blank"><img
                         src="./assets/img/logo-whatsapp.png" /></a>
             </div>
         </div>

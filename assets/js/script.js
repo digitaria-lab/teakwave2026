@@ -3,7 +3,77 @@
 (function () {
   'use strict';
 
+
+  const defaultExternalUrls = Object.freeze({
+    tokopedia: 'https://www.tokopedia.com/teakwave',
+    shopee: 'https://shopee.co.id/teakwave',
+    whatsapp: 'https://wa.me/6282112345678',
+    instagram: 'https://www.instagram.com/teak.wave/',
+    facebook: 'https://www.facebook.com/teakwave'
+  });
+
+  let externalUrls = { ...defaultExternalUrls };
+
+  function getExternalUrl(key) {
+    return externalUrls[key] || defaultExternalUrls[key] || '#';
+  }
+
+  function buildWhatsappUrl(message = '') {
+    const baseUrl = getExternalUrl('whatsapp');
+    if (!message) return baseUrl;
+
+    try {
+      const url = new URL(baseUrl, window.location.origin);
+      url.searchParams.set('text', message);
+      return url.toString();
+    } catch (error) {
+      const separator = baseUrl.includes('?') ? '&' : '?';
+      return `${baseUrl}${separator}text=${encodeURIComponent(message)}`;
+    }
+  }
+
+  function applyExternalUrlSettings(root = document) {
+    root.querySelectorAll('[data-external-url]').forEach((link) => {
+      const key = String(link.dataset.externalUrl || '').toLowerCase();
+      if (!Object.prototype.hasOwnProperty.call(defaultExternalUrls, key)) return;
+
+      const message = key === 'whatsapp' ? String(link.dataset.whatsappMessage || '') : '';
+      link.setAttribute('href', key === 'whatsapp' ? buildWhatsappUrl(message) : getExternalUrl(key));
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener');
+    });
+
+    initFixedMarketplaceLinks(root);
+    initFixedFooterSocialLinks(root);
+  }
+
+  async function initExternalUrlSettings() {
+    applyExternalUrlSettings(document);
+
+    try {
+      const response = await fetch('api/settings.php', {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const payload = await response.json();
+      if (payload && payload.urls && typeof payload.urls === 'object') {
+        Object.keys(defaultExternalUrls).forEach((key) => {
+          const value = String(payload.urls[key] || '').trim();
+          if (/^https?:\/\//i.test(value)) externalUrls[key] = value;
+        });
+      }
+    } catch (error) {
+      console.warn('Pengaturan URL eksternal belum dapat dimuat. Menggunakan URL bawaan.', error);
+    }
+
+    applyExternalUrlSettings(document);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    initExternalUrlSettings();
     initHeroHeaderSlides();
     initDynamicBanners();
     initDynamicContents();
@@ -22,8 +92,8 @@
   // database (misalnya "#") tidak menimpa tautan toko resmi.
   function initFixedMarketplaceLinks(root = document) {
     const marketplaceUrls = {
-      tokopedia: 'https://www.tokopedia.com/teakwave',
-      shopee: 'https://shopee.co.id/teakwave'
+      tokopedia: getExternalUrl('tokopedia'),
+      shopee: getExternalUrl('shopee')
     };
 
     root.querySelectorAll('a.market-btn').forEach((link) => {
@@ -53,8 +123,8 @@
   // konten database (termasuk "#") tidak menimpa tautan akun resmi.
   function initFixedFooterSocialLinks(root = document) {
     const socialUrls = {
-      instagram: 'https://www.instagram.com/teak.wave/',
-      facebook: 'https://www.facebook.com/teakwave'
+      instagram: getExternalUrl('instagram'),
+      facebook: getExternalUrl('facebook')
     };
 
     root.querySelectorAll('.social a').forEach((link) => {
@@ -591,8 +661,8 @@
       /distributor|perangkat|jaringan|internet|berkualitas|indonesia/i.test(text)
     ) || 'Distributor perangkat jaringan nirkabel dan internet berkualitas untuk berbagai kebutuhan jaringan di Indonesia.';
 
-    const instagram = 'https://www.instagram.com/teak.wave/';
-    const facebook = 'https://www.facebook.com/teakwave';
+    const instagram = getExternalUrl('instagram');
+    const facebook = getExternalUrl('facebook');
 
     target.innerHTML = `
       <h2 class="fw-bold mb-3">${escapeText(title)}</h2>
@@ -1323,7 +1393,7 @@
           </ul>
           ${productPriceHTML}
           <div class="detail-actions">
-            <a class="detail-action-btn primary" href="https://wa.me/6282112345678?text=${encodeURIComponent('Halo, saya tertarik dengan produk ' + product.name)}" rel="noopener" target="_blank"><i class="bi bi-whatsapp"></i> Tanya via WhatsApp</a>
+            <a class="detail-action-btn primary" data-external-url="whatsapp" data-whatsapp-message="${escapeHTML('Halo, saya tertarik dengan produk ' + product.name)}" href="${escapeHTML(buildWhatsappUrl('Halo, saya tertarik dengan produk ' + product.name))}" rel="noopener" target="_blank"><i class="bi bi-whatsapp"></i> Tanya via WhatsApp</a>
             <a class="detail-action-btn secondary" href="produk.php"><i class="bi bi-grid"></i> Kembali ke Produk</a>
           </div>
         `;

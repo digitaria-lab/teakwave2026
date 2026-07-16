@@ -39,14 +39,14 @@ require __DIR__ . '/includes/header.php';
                         <div class="contact-method-icon"><i class="bi bi-telephone-fill"></i></div>
                         <div>
                             <strong>WhatsApp Sales</strong>
-                            <a href="https://wa.me/6289527932474" rel="noopener" target="_blank">+6289527932474</a>
+                            <a data-external-url="whatsapp" href="https://wa.me/6289527932474" rel="noopener" target="_blank">+6289527932474</a>
                         </div>
                     </div>
                     <div class="contact-method reveal slide-right">
                         <div class="contact-method-icon"><i class="bi bi-instagram"></i></div>
                         <div>
                             <strong>Instagram</strong>
-                            <a href="https://instagram.com/teak.wave" rel="noopener" target="_blank">teak.wave</a>
+                            <a data-external-url="instagram" href="https://instagram.com/teak.wave" rel="noopener" target="_blank">teak.wave</a>
                         </div>
                     </div>
                 </div>
@@ -58,11 +58,11 @@ require __DIR__ . '/includes/header.php';
                         kami.</p>
                 </div>
                 <div aria-label="Link pembelian produk" class="purchase-actions">
-                    <a aria-label="Tokopedia" class="purchase-action tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener"
+                    <a aria-label="Tokopedia" class="purchase-action tokopedia" data-external-url="tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener"
                         target="_blank"><img src="./assets/img/icon-tokopedia.png" /></a>
-                    <a aria-label="Shopee" class="purchase-action shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
+                    <a aria-label="Shopee" class="purchase-action shopee" data-external-url="shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
                             src="./assets/img/icon-shopee.png" /></a>
-                    <a aria-label="WhatsApp" class="purchase-action whatsapp" href="https://wa.me/6289527932474"
+                    <a aria-label="WhatsApp" class="purchase-action whatsapp" data-external-url="whatsapp" href="https://wa.me/6289527932474"
                         rel="noopener" target="_blank"><img src="./assets/img/icon-whatsapp.png" /></a>
                 </div>
             </div>
@@ -71,7 +71,6 @@ require __DIR__ . '/includes/header.php';
     </section>
 </main>
 <?php
-$whatsappUrl = 'https://wa.me/6289527932474';
 include __DIR__ . '/includes/floating-actions.php';
 include __DIR__ . '/includes/scripts.php';
 ?>

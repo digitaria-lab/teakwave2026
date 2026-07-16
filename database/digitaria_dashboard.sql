@@ -617,8 +617,13 @@ INSERT INTO `website_settings` (`id`, `setting_key`, `setting_value`, `setting_t
 (32, 'footer_phone_link', '0216121005', 'text', '2026-05-16 17:53:49', '2026-05-16 17:53:49'),
 (33, 'footer_company_title', 'Teakwave', 'text', '2026-05-16 17:53:49', '2026-05-16 17:53:49'),
 (34, 'footer_description', 'Distributor perangkat jaringan nirkabel dan internet berkualitas untuk berbagai kebutuhan jaringan di Indonesia.', 'textarea', '2026-05-16 17:53:49', '2026-05-16 17:53:49'),
-(35, 'footer_instagram_url', '#', 'text', '2026-05-16 17:53:49', '2026-05-16 17:53:49'),
-(36, 'footer_facebook_url', '#', 'text', '2026-05-16 17:53:49', '2026-05-16 17:53:49');
+(35, 'footer_instagram_url', 'https://www.instagram.com/teak.wave/', 'url', '2026-05-16 17:53:49', '2026-07-17 00:00:00'),
+(36, 'footer_facebook_url', 'https://www.facebook.com/teakwave', 'url', '2026-05-16 17:53:49', '2026-07-17 00:00:00'),
+(37, 'tokopedia_url', 'https://www.tokopedia.com/teakwave', 'url', '2026-07-17 00:00:00', '2026-07-17 00:00:00'),
+(38, 'shopee_url', 'https://shopee.co.id/teakwave', 'url', '2026-07-17 00:00:00', '2026-07-17 00:00:00'),
+(39, 'whatsapp_url', 'https://wa.me/6282112345678', 'url', '2026-07-17 00:00:00', '2026-07-17 00:00:00'),
+(40, 'instagram_url', 'https://www.instagram.com/teak.wave/', 'url', '2026-07-17 00:00:00', '2026-07-17 00:00:00'),
+(41, 'facebook_url', 'https://www.facebook.com/teakwave', 'url', '2026-07-17 00:00:00', '2026-07-17 00:00:00');
 
 --
 -- Indexes for dumped tables
@@ -793,7 +798,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `website_settings`
 --
 ALTER TABLE `website_settings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
 
 --
 -- Constraints for dumped tables
