@@ -7,6 +7,8 @@
     initHeroHeaderSlides();
     initDynamicBanners();
     initDynamicContents();
+    initFixedMarketplaceLinks();
+    initFixedFooterSocialLinks();
     initRevealAnimation();
     initFloatingActions();
     initNavbarActiveState();
@@ -14,6 +16,67 @@
     initProductCatalog();
     initProductDetailGallery();
   });
+
+
+  // URL marketplace dibuat tetap di sisi frontend agar nilai href dari konten
+  // database (misalnya "#") tidak menimpa tautan toko resmi.
+  function initFixedMarketplaceLinks(root = document) {
+    const marketplaceUrls = {
+      tokopedia: 'https://www.tokopedia.com/teakwave',
+      shopee: 'https://shopee.co.id/teakwave'
+    };
+
+    root.querySelectorAll('a.market-btn').forEach((link) => {
+      const image = link.querySelector('img');
+      const marker = [
+        link.className,
+        link.textContent,
+        image?.getAttribute('src'),
+        image?.getAttribute('alt')
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      if (marker.includes('tokopedia')) {
+        link.setAttribute('href', marketplaceUrls.tokopedia);
+      } else if (marker.includes('shopee')) {
+        link.setAttribute('href', marketplaceUrls.shopee);
+      } else {
+        return;
+      }
+
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener');
+    });
+  }
+
+
+  // URL media sosial footer dibuat tetap di sisi frontend agar nilai href dari
+  // konten database (termasuk "#") tidak menimpa tautan akun resmi.
+  function initFixedFooterSocialLinks(root = document) {
+    const socialUrls = {
+      instagram: 'https://www.instagram.com/teak.wave/',
+      facebook: 'https://www.facebook.com/teakwave'
+    };
+
+    root.querySelectorAll('.social a').forEach((link) => {
+      const marker = [
+        link.getAttribute('aria-label'),
+        link.className,
+        link.textContent,
+        link.querySelector('i')?.className
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      if (marker.includes('instagram')) {
+        link.setAttribute('href', socialUrls.instagram);
+      } else if (marker.includes('facebook')) {
+        link.setAttribute('href', socialUrls.facebook);
+      } else {
+        return;
+      }
+
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener');
+    });
+  }
 
 
   function initHeroHeaderSlides() {
@@ -528,16 +591,15 @@
       /distributor|perangkat|jaringan|internet|berkualitas|indonesia/i.test(text)
     ) || 'Distributor perangkat jaringan nirkabel dan internet berkualitas untuk berbagai kebutuhan jaringan di Indonesia.';
 
-    const links = Array.from(template.content.querySelectorAll('a[href]')).map((a) => a.getAttribute('href') || '');
-    const instagram = links.find((href) => /instagram/i.test(href)) || '#';
-    const facebook = links.find((href) => /facebook/i.test(href)) || '#';
+    const instagram = 'https://www.instagram.com/teak.wave/';
+    const facebook = 'https://www.facebook.com/teakwave';
 
     target.innerHTML = `
       <h2 class="fw-bold mb-3">${escapeText(title)}</h2>
       <p>${escapeText(description)}</p>
       <div class="social mt-3">
-        <a aria-label="Instagram" href="${escapeText(instagram)}"><i class="bi bi-instagram"></i></a>
-        <a aria-label="Facebook" href="${escapeText(facebook)}"><i class="bi bi-facebook"></i></a>
+        <a aria-label="Instagram" href="${escapeText(instagram)}" target="_blank" rel="noopener"><i class="bi bi-instagram"></i></a>
+        <a aria-label="Facebook" href="${escapeText(facebook)}" target="_blank" rel="noopener"><i class="bi bi-facebook"></i></a>
       </div>
     `;
 
@@ -719,6 +781,11 @@
           target.querySelectorAll('.reveal').forEach((el) => el.classList.add('show'));
         }
       }
+
+      // Terapkan kembali URL marketplace setelah konten dinamis selesai dirender.
+      // Ini mempertahankan teks dari database, tetapi URL tetap berasal dari script.
+      initFixedMarketplaceLinks(target);
+      initFixedFooterSocialLinks(target);
 
       if (payload.content.title) {
         target.setAttribute('data-content-title', payload.content.title);

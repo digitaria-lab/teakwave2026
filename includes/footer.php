@@ -21,8 +21,8 @@ $footerContainerClass = $footerContainerClass ?? 'container';
 <p>Distributor perangkat jaringan nirkabel dan internet berkualitas untuk berbagai kebutuhan
                             jaringan di Indonesia.</p>
 <div class="social mt-3">
-<a aria-label="Instagram" href="https://www.instagram.com/teak.wave/" target="_blank"><i class="bi bi-instagram"></i></a>
-<a aria-label="Facebook" href="https://web.facebook.com/teakwave/" target="_blank"><i class="bi bi-facebook"></i></a>
+<a aria-label="Instagram" href="https://www.instagram.com/teak.wave/" target="_blank" rel="noopener"><i class="bi bi-instagram"></i></a>
+<a aria-label="Facebook" href="https://www.facebook.com/teakwave" target="_blank" rel="noopener"><i class="bi bi-facebook"></i></a>
 </div>
 </div>
 </div>
