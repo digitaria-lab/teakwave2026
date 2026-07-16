@@ -128,6 +128,12 @@
             <i class="bi bi-clock-history"></i> Activity Logs
         </a>
         <?php endif; ?>
+
+        <?php if(has_permission('backup-restore')): ?>
+        <a href="backup-restore.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'backup-restore.php' ? 'active' : ''; ?>">
+            <i class="bi bi-database-fill-gear"></i> Backup & Restore
+        </a>
+        <?php endif; ?>
     </nav>
 
     <a href="logout.php" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Logout</a>

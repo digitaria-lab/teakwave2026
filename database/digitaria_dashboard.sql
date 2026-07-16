@@ -548,7 +548,8 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `page_key`, `created_at`) VALUE
 (54, 6, 'files', '2026-05-14 18:52:37'),
 (55, 6, 'logs', '2026-05-14 18:52:37'),
 (56, 1, 'website-settings', '2026-05-14 19:24:24'),
-(57, 2, 'website-settings', '2026-05-14 19:24:24');
+(57, 2, 'website-settings', '2026-05-14 19:24:24'),
+(58, 1, 'backup-restore', '2026-07-17 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -780,7 +781,7 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT for table `role_permissions`
 --
 ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT for table `users`

@@ -761,7 +761,8 @@ function dashboard_pages() {
         'files' => 'File / Image Management',
         'banners' => 'Banner Ads Management',
         'logs' => 'Activity Logs',
-        'website-settings' => 'Website Front Settings'
+        'website-settings' => 'Website Front Settings',
+        'backup-restore' => 'Backup & Restore Database'
     ];
 }
 
@@ -781,7 +782,8 @@ function page_key_from_file($file) {
         'files.php' => 'files',
         'banners.php' => 'banners',
         'logs.php' => 'logs',
-        'website-settings.php' => 'website-settings'
+        'website-settings.php' => 'website-settings',
+        'backup-restore.php' => 'backup-restore'
     ];
 
     return $map[$file] ?? null;
@@ -790,7 +792,7 @@ function page_key_from_file($file) {
 function has_permission($page_key) {
     global $pdo;
 
-    if (!$page_key) return true;
+    if (!$page_key || is_super_admin()) return true;
 
     $role_id = $_SESSION['user']['role_id'] ?? null;
 
