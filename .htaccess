@@ -14,6 +14,8 @@ RewriteRule ^produk-([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
 # will be routed to:
 # /produk-detail.php?slug=unifi-u6-plus-indoor-ap
 <IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule ^produk-detail/([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
+    RewriteEngine On
+    RewriteRule ^produk-detail/([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
+    RewriteRule ^video-([1-9][0-9]*)-([a-z0-9-]+)\.html$ video-detail.php?id=$1&slug=$2 [L,QSA,NC]
+
 </IfModule>
