@@ -1,10 +1,28 @@
+Options -Indexes
+Options -MultiViews
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # SEO-friendly public video detail URL:
-    # video-25-judul-video.html -> video-detail.php?id=25&slug=judul-video
+    # Jangan memproses file dan folder yang benar-benar tersedia
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Detail produk SEO-friendly
+    # /produk-mikrotik-crs518-16xs-2xq-rm
+    # diarahkan ke:
+    # /produk-detail.php?slug=mikrotik-crs518-16xs-2xq-rm
+    RewriteRule ^produk-([a-z0-9][a-z0-9-]*)/?$ produk-detail.php?slug=$1 [L,QSA,NC]
+
+    # Detail video SEO-friendly
     RewriteRule ^video-([1-9][0-9]*)-([a-z0-9-]+)\.html$ video-detail.php?id=$1&slug=$2 [L,QSA,NC]
 </IfModule>
+
+# Lindungi file sensitif
+<FilesMatch "^(\.env|composer\.(json|lock)|.*\.(sql|log|ini|bak|dist))$">
+    Require all denied
+</FilesMatch>
 
 # Page-view collector must never be served from cache.
 <IfModule mod_headers.c>
