@@ -3,6 +3,17 @@ ob_start();
 require_once 'auth/check.php';
 require_once __DIR__ . '/includes/database-backup.php';
 
+// Backup database contains highly sensitive information. Keep this page exclusive to Super Admin.
+if (!is_super_admin()) {
+    log_activity('access_denied', 'backup-restore', 'Mencoba mengakses halaman Backup & Restore tanpa hak Super Admin.');
+    http_response_code(403);
+    include __DIR__ . '/includes/no-access.php';
+    exit;
+}
+
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 $page_title = 'Backup & Restore Database';
 $databaseName = db_current_database($pdo);
 $message = $_SESSION['backup_restore_message'] ?? null;
@@ -19,8 +30,160 @@ function backup_restore_redirect() {
     redirect('backup-restore.php');
 }
 
+function backup_restore_log($action, $description = '', $forceSchemaRefresh = false) {
+    return log_activity($action, 'backup-restore', $description, $forceSchemaRefresh);
+}
+
+function backup_restore_log_filename($value) {
+    $name = basename(str_replace('\\', '/', trim((string) $value)));
+    $name = preg_replace('/[^A-Za-z0-9._ -]/', '_', $name);
+    return substr($name ?: 'tidak-diketahui', 0, 180);
+}
+
+function backup_restore_failure_action($action) {
+    $map = [
+        'run_permission_upgrade' => 'permission_upgrade_failed',
+        'create_backup' => 'backup_create_failed',
+        'dump_database' => 'database_dump_failed',
+        'restore_upload' => 'restore_upload_failed',
+        'reset_database' => 'database_reset_failed',
+        'restore_saved' => 'restore_saved_failed',
+        'delete_backup' => 'backup_delete_failed'
+    ];
+
+    return $map[$action] ?? 'request_failed';
+}
+
+function backup_restore_failure_context($action) {
+    if ($action === 'restore_upload') {
+        return ' File: ' . backup_restore_log_filename($_POST['sql_original_name'] ?? ($_FILES['sql_file']['name'] ?? '')) . '.';
+    }
+
+    if ($action === 'reset_database') {
+        return ' File: ' . backup_restore_log_filename($_POST['reset_sql_original_name'] ?? ($_FILES['reset_sql_file']['name'] ?? '')) . '.';
+    }
+
+    if (in_array($action, ['restore_saved', 'delete_backup'], true)) {
+        return ' File: ' . backup_restore_log_filename($_POST['filename'] ?? '') . '.';
+    }
+
+    if ($action === 'dump_database') {
+        $mode = preg_replace('/[^a-z_-]/i', '', (string) ($_POST['dump_mode'] ?? 'full'));
+        return ' Mode: ' . ($mode ?: 'full') . '.';
+    }
+
+    return '';
+}
+
 function backup_restore_filename($prefix = 'backup') {
     return $prefix . '-' . date('Ymd-His') . '-' . substr(bin2hex(random_bytes(3)), 0, 6) . '.sql';
+}
+
+function backup_restore_ini_bytes($value) {
+    $value = trim((string) $value);
+    if ($value === '') return 0;
+
+    $unit = strtolower(substr($value, -1));
+    $number = (float) $value;
+
+    if ($unit === 'g') return (int) round($number * 1024 * 1024 * 1024);
+    if ($unit === 'm') return (int) round($number * 1024 * 1024);
+    if ($unit === 'k') return (int) round($number * 1024);
+
+    return (int) round($number);
+}
+
+function backup_restore_verify_current_password(PDO $pdo, $password, $purpose = 'restore') {
+    $password = (string) $password;
+    $userId = (int) ($_SESSION['user']['id'] ?? 0);
+    $purpose = $purpose === 'dump' ? 'dump database' : ($purpose === 'reset' ? 'reset database' : 'restore');
+
+    if ($userId <= 0 || $password === '') {
+        throw new RuntimeException('Masukkan password akun Super Admin untuk mengonfirmasi ' . $purpose . '.');
+    }
+
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ? AND status = 'active' LIMIT 1");
+    $stmt->execute([$userId]);
+    $hash = $stmt->fetchColumn();
+
+    if (!$hash || !password_verify($password, $hash)) {
+        throw new RuntimeException('Password akun Super Admin tidak benar. ' . ucfirst($purpose) . ' dibatalkan.');
+    }
+}
+
+function backup_restore_assert_rate_limit() {
+    $windowSeconds = 10 * 60;
+    $maxAttempts = 5;
+    $now = time();
+    $attempts = $_SESSION['database_restore_attempts'] ?? [];
+
+    $attempts = array_values(array_filter($attempts, function ($timestamp) use ($now, $windowSeconds) {
+        return is_numeric($timestamp) && ((int) $timestamp) > ($now - $windowSeconds);
+    }));
+
+    if (count($attempts) >= $maxAttempts) {
+        throw new RuntimeException('Terlalu banyak percobaan restore. Tunggu beberapa menit lalu coba lagi.');
+    }
+
+    $attempts[] = $now;
+    $_SESSION['database_restore_attempts'] = $attempts;
+}
+
+
+function backup_restore_assert_dump_rate_limit() {
+    $windowSeconds = 10 * 60;
+    $maxAttempts = 5;
+    $now = time();
+    $attempts = $_SESSION['database_dump_attempts'] ?? [];
+
+    $attempts = array_values(array_filter($attempts, function ($timestamp) use ($now, $windowSeconds) {
+        return is_numeric($timestamp) && ((int) $timestamp) > ($now - $windowSeconds);
+    }));
+
+    if (count($attempts) >= $maxAttempts) {
+        throw new RuntimeException('Terlalu banyak permintaan dump database. Tunggu beberapa menit lalu coba lagi.');
+    }
+
+    $attempts[] = $now;
+    $_SESSION['database_dump_attempts'] = $attempts;
+}
+
+function backup_restore_assert_reset_rate_limit() {
+    $windowSeconds = 30 * 60;
+    $maxAttempts = 3;
+    $now = time();
+    $attempts = $_SESSION['database_reset_attempts'] ?? [];
+
+    $attempts = array_values(array_filter($attempts, function ($timestamp) use ($now, $windowSeconds) {
+        return is_numeric($timestamp) && ((int) $timestamp) > ($now - $windowSeconds);
+    }));
+
+    if (count($attempts) >= $maxAttempts) {
+        throw new RuntimeException('Terlalu banyak percobaan reset database. Tunggu 30 menit lalu coba lagi.');
+    }
+
+    $attempts[] = $now;
+    $_SESSION['database_reset_attempts'] = $attempts;
+}
+
+function backup_restore_check_post_size() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+    $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    $postMaxBytes = backup_restore_ini_bytes(ini_get('post_max_size'));
+
+    if ($contentLength > 0 && $postMaxBytes > 0 && $contentLength > $postMaxBytes) {
+        backup_restore_log(
+            'restore_upload_failed',
+            'Upload restore ditolak karena ukuran request ' . $contentLength
+            . ' byte melebihi post_max_size server (' . ini_get('post_max_size') . ').'
+        );
+        backup_restore_flash(
+            'danger',
+            'Upload ditolak karena ukuran request melebihi post_max_size server (' . ini_get('post_max_size') . ').'
+        );
+        backup_restore_redirect();
+    }
 }
 
 function backup_restore_permission_upgrade_status(PDO $pdo) {
@@ -102,19 +265,34 @@ function backup_restore_run_permission_upgrade(PDO $pdo, $sqlPath) {
     }
 }
 
-function backup_restore_send_download($path, $downloadName) {
+function backup_restore_send_download($path, $downloadName, $deleteAfter = false) {
     if (!is_file($path) || !is_readable($path)) {
         http_response_code(404);
         exit('File backup tidak ditemukan.');
+    }
+
+    if ($deleteAfter) {
+        $cleanupPath = $path;
+        register_shutdown_function(function () use ($cleanupPath) {
+            if (is_file($cleanupPath)) {
+                @unlink($cleanupPath);
+            }
+        });
     }
 
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
 
+    $size = filesize($path);
+
     header('Content-Type: application/sql; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . str_replace('"', '', basename($downloadName)) . '"');
-    header('Content-Length: ' . filesize($path));
+
+    if ($size !== false) {
+        header('Content-Length: ' . $size);
+    }
+
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
     header('X-Content-Type-Options: nosniff');
@@ -122,21 +300,34 @@ function backup_restore_send_download($path, $downloadName) {
     exit;
 }
 
+backup_restore_check_post_size();
+
 if (isset($_GET['download'])) {
+    $requestedFilename = backup_restore_log_filename($_GET['download']);
     $filename = db_backup_safe_name($_GET['download']);
     $path = $filename ? db_backup_path($filename) : null;
 
     if (!$path) {
+        backup_restore_log('backup_download_failed', 'Nama file backup tidak valid: ' . $requestedFilename . '.');
         http_response_code(400);
         exit('Nama file backup tidak valid.');
     }
 
-    log_activity('download', 'database-backup', 'Mengunduh backup database: ' . $filename);
+    if (!is_file($path) || !is_readable($path)) {
+        backup_restore_log('backup_download_failed', 'File backup tidak ditemukan atau tidak dapat dibaca: ' . $filename . '.');
+        http_response_code(404);
+        exit('File backup tidak ditemukan.');
+    }
+
+    backup_restore_log(
+        'backup_download',
+        'Mengunduh backup database: ' . $filename . '; ukuran: ' . (int) filesize($path) . ' byte.'
+    );
     backup_restore_send_download($path, $filename);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    verify_csrf();
+    verify_csrf('backup-restore');
     $action = $_POST['action'] ?? '';
 
     try {
@@ -149,10 +340,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Upgrade telah dijalankan, tetapi status izin belum lengkap. Periksa struktur tabel roles dan role_permissions.');
             }
 
-            log_activity(
-                'upgrade',
-                'database-backup',
-                'Menjalankan upgrade_backup_restore_permission.sql melalui dashboard; baris baru: ' . $affected
+            backup_restore_log(
+                'permission_upgrade',
+                'Menjalankan upgrade izin Backup & Restore; baris baru: ' . $affected
+                . '; status terpasang: ' . ($status['installed'] ? 'ya' : 'tidak') . '.'
             );
 
             backup_restore_flash(
@@ -167,63 +358,168 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'create_backup') {
             $filename = backup_restore_filename('teakwave-db');
             $path = db_backup_path($filename);
-            db_create_backup($pdo, $path, $databaseName);
-            log_activity('backup', 'database-backup', 'Membuat backup database: ' . $filename);
+            $operationLock = db_restore_acquire_lock();
+
+            try {
+                db_create_backup($pdo, $path, $databaseName);
+            } finally {
+                db_restore_release_lock($operationLock);
+            }
+
+            backup_restore_log(
+                'backup_create',
+                'Membuat backup database: ' . $filename . '; ukuran: ' . (int) filesize($path) . ' byte.'
+            );
             backup_restore_send_download($path, $filename);
         }
 
-        if ($action === 'restore_upload') {
+        if ($action === 'dump_database') {
+            if (($_POST['confirm_dump'] ?? '') !== 'yes') {
+                throw new RuntimeException('Centang konfirmasi dump database terlebih dahulu.');
+            }
+
+            backup_restore_assert_dump_rate_limit();
+            backup_restore_verify_current_password($pdo, $_POST['current_password'] ?? '', 'dump');
+
+            $mode = (string) ($_POST['dump_mode'] ?? 'full');
+            $modes = [
+                'full' => [
+                    'label' => 'struktur dan data',
+                    'filename' => 'full',
+                    'include_structure' => true,
+                    'include_data' => true
+                ],
+                'structure' => [
+                    'label' => 'struktur saja',
+                    'filename' => 'structure',
+                    'include_structure' => true,
+                    'include_data' => false
+                ],
+                'data' => [
+                    'label' => 'data saja',
+                    'filename' => 'data',
+                    'include_structure' => false,
+                    'include_data' => true
+                ]
+            ];
+
+            if (!isset($modes[$mode])) {
+                throw new RuntimeException('Mode dump database tidak valid.');
+            }
+
+            $dumpConfig = $modes[$mode];
+            $filename = backup_restore_filename('teakwave-dump-' . $dumpConfig['filename']);
+            $path = db_dump_path($filename);
+
+            if (!$path) {
+                throw new RuntimeException('Lokasi file dump sementara tidak valid.');
+            }
+
+            $dumpCleanupPath = $path;
+            register_shutdown_function(function () use ($dumpCleanupPath) {
+                if (is_file($dumpCleanupPath)) {
+                    @unlink($dumpCleanupPath);
+                }
+            });
+
+            $operationLock = db_restore_acquire_lock();
+
+            try {
+                db_create_backup(
+                    $pdo,
+                    $path,
+                    $databaseName,
+                    [
+                        'include_structure' => $dumpConfig['include_structure'],
+                        'include_data' => $dumpConfig['include_data'],
+                        'artifact_type' => 'Dump'
+                    ]
+                );
+            } finally {
+                db_restore_release_lock($operationLock);
+            }
+
+            $size = (int) filesize($path);
+            $sha256 = hash_file('sha256', $path);
+
+            backup_restore_log(
+                'database_dump',
+                'Membuat dan mengunduh dump database sementara; mode: ' . $dumpConfig['label']
+                . '; file: ' . $filename
+                . '; ukuran: ' . $size . ' byte'
+                . ($sha256 ? '; SHA-256: ' . substr($sha256, 0, 16) : '')
+                . '. File tidak disimpan dalam riwayat backup.'
+            );
+
+            backup_restore_send_download($path, $filename, true);
+        }
+
+        if (in_array($action, ['restore_upload', 'reset_database'], true)) {
             if (($_POST['confirm_restore'] ?? '') !== 'yes') {
                 throw new RuntimeException('Centang konfirmasi restore terlebih dahulu.');
             }
 
-            if (!isset($_FILES['sql_file']) || $_FILES['sql_file']['error'] === UPLOAD_ERR_NO_FILE) {
+            backup_restore_assert_rate_limit();
+            backup_restore_verify_current_password($pdo, $_POST['current_password'] ?? '');
+
+            if (!isset($_FILES['sql_file'])) {
                 throw new RuntimeException('Pilih file backup SQL yang akan direstore.');
             }
 
-            if ($_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
-                throw new RuntimeException('Upload file SQL gagal. Kode error: ' . $_FILES['sql_file']['error']);
+            $quarantined = null;
+            $restoreLock = null;
+
+            try {
+                $quarantined = db_quarantine_uploaded_sql(
+                    $_FILES['sql_file'],
+                    $_POST['sql_original_name'] ?? ''
+                );
+
+                // Validate every SQL statement before any current data is changed.
+                $validatedStatements = db_restore_preflight_file($quarantined['path'], $databaseName);
+                $restoreLock = db_restore_acquire_lock();
+
+                $safetyName = backup_restore_filename('before-restore');
+                $safetyPath = db_backup_path($safetyName);
+                db_create_backup($pdo, $safetyPath, $databaseName);
+
+                $executed = db_restore_from_file($pdo, $quarantined['path'], $databaseName);
+                // Restore may replace activity_logs with an older schema. Force a
+                // fresh schema inspection before writing the success audit event.
+                reset_activity_log_schema_cache();
+                backup_restore_log(
+                    'restore_upload',
+                    'Restore database berhasil dari upload ' . backup_restore_log_filename($quarantined['original_name'])
+                    . '; SHA-256: ' . substr($quarantined['sha256'], 0, 16)
+                    . '; backup pengaman: ' . $safetyName
+                    . '; statement tervalidasi: ' . $validatedStatements
+                    . '; statement dijalankan: ' . $executed . '.',
+                    true
+                );
+
+                backup_restore_flash(
+                    'success',
+                    'Restore berhasil. ' . number_format($executed, 0, ',', '.')
+                    . ' perintah SQL dijalankan. Backup pengaman tersimpan sebagai ' . $safetyName . '.'
+                );
+            } finally {
+                db_restore_release_lock($restoreLock);
+
+                if (is_array($quarantined) && !empty($quarantined['path'])) {
+                    db_delete_quarantined_restore($quarantined['path']);
+                }
             }
 
-            $originalName = basename((string) $_FILES['sql_file']['name']);
-            $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-            $size = (int) ($_FILES['sql_file']['size'] ?? 0);
-
-            if ($extension !== 'sql') {
-                throw new RuntimeException('File restore harus menggunakan ekstensi .sql.');
-            }
-
-            if ($size <= 0 || $size > 64 * 1024 * 1024) {
-                throw new RuntimeException('Ukuran file SQL harus antara 1 byte sampai 64 MB.');
-            }
-
-            $tmpPath = $_FILES['sql_file']['tmp_name'];
-            if (!is_uploaded_file($tmpPath)) {
-                throw new RuntimeException('File upload tidak valid.');
-            }
-
-            $safetyName = backup_restore_filename('before-restore');
-            $safetyPath = db_backup_path($safetyName);
-            db_create_backup($pdo, $safetyPath, $databaseName);
-
-            $executed = db_restore_from_file($pdo, $tmpPath, $databaseName);
-            log_activity(
-                'restore',
-                'database-backup',
-                'Restore database dari upload ' . $originalName . '; safety backup: ' . $safetyName . '; statements: ' . $executed
-            );
-
-            backup_restore_flash(
-                'success',
-                'Restore berhasil. ' . number_format($executed, 0, ',', '.') . ' perintah SQL dijalankan. Backup pengaman tersimpan sebagai ' . $safetyName . '.'
-            );
             backup_restore_redirect();
         }
 
         if ($action === 'restore_saved') {
             if (($_POST['confirm_restore'] ?? '') !== 'yes') {
-                throw new RuntimeException('Centang konfirmasi restore terlebih dahulu.');
+                throw new RuntimeException('Konfirmasi restore tidak valid.');
             }
+
+            backup_restore_assert_rate_limit();
+            backup_restore_verify_current_password($pdo, $_POST['current_password'] ?? '');
 
             $filename = db_backup_safe_name($_POST['filename'] ?? '');
             $sourcePath = $filename ? db_backup_path($filename) : null;
@@ -232,15 +528,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('File backup yang dipilih tidak ditemukan.');
             }
 
-            $safetyName = backup_restore_filename('before-restore');
-            $safetyPath = db_backup_path($safetyName);
-            db_create_backup($pdo, $safetyPath, $databaseName);
+            $restoreLock = db_restore_acquire_lock();
 
-            $executed = db_restore_from_file($pdo, $sourcePath, $databaseName);
-            log_activity(
-                'restore',
-                'database-backup',
-                'Restore database dari backup tersimpan ' . $filename . '; safety backup: ' . $safetyName . '; statements: ' . $executed
+            try {
+                db_restore_preflight_file($sourcePath, $databaseName);
+
+                $safetyName = backup_restore_filename('before-restore');
+                $safetyPath = db_backup_path($safetyName);
+                db_create_backup($pdo, $safetyPath, $databaseName);
+
+                $executed = db_restore_from_file($pdo, $sourcePath, $databaseName);
+            } finally {
+                db_restore_release_lock($restoreLock);
+            }
+
+            // Restore may replace activity_logs with an older schema. Force a
+            // fresh schema inspection before writing the success audit event.
+            reset_activity_log_schema_cache();
+            backup_restore_log(
+                'restore_saved',
+                'Restore database berhasil dari backup tersimpan ' . $filename
+                . '; backup pengaman: ' . $safetyName
+                . '; statement dijalankan: ' . $executed . '.',
+                true
             );
 
             backup_restore_flash(
@@ -258,18 +568,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('File backup tidak ditemukan.');
             }
 
-            if (!unlink($path)) {
-                throw new RuntimeException('File backup gagal dihapus.');
+            $operationLock = db_restore_acquire_lock();
+            try {
+                if (!unlink($path)) {
+                    throw new RuntimeException('File backup gagal dihapus.');
+                }
+            } finally {
+                db_restore_release_lock($operationLock);
             }
 
-            log_activity('delete', 'database-backup', 'Menghapus backup database: ' . $filename);
+            backup_restore_log('backup_delete', 'Menghapus backup database: ' . $filename . '.');
             backup_restore_flash('success', 'Backup ' . $filename . ' berhasil dihapus.');
             backup_restore_redirect();
         }
 
         throw new RuntimeException('Aksi tidak dikenali.');
     } catch (Throwable $e) {
-        log_activity('error', 'database-backup', $e->getMessage());
+        backup_restore_log(
+            backup_restore_failure_action($action),
+            'Aksi Backup & Restore gagal.' . backup_restore_failure_context($action)
+            . ' Alasan: ' . sanitize_plain_text($e->getMessage(), 1000)
+        );
         backup_restore_flash('danger', $e->getMessage());
         backup_restore_redirect();
     }
@@ -347,7 +666,7 @@ include 'includes/sidebar.php';
     <?php endif; ?>
 
     <div class="row g-4 mb-4">
-        <div class="col-lg-6">
+        <div class="col-xl-4 col-lg-6">
             <div class="card soft-card h-100">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start gap-3 mb-3">
@@ -375,7 +694,59 @@ include 'includes/sidebar.php';
             </div>
         </div>
 
-        <div class="col-lg-6">
+        <div class="col-xl-4 col-lg-6">
+            <div class="card soft-card h-100 border border-primary-subtle">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div class="stat-icon bg-primary-subtle text-primary flex-shrink-0">
+                            <i class="bi bi-filetype-sql"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Dump Database</h5>
+                            <p class="text-muted mb-0">Mengunduh dump SQL langsung tanpa menyimpannya dalam riwayat backup server.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border small">
+                        File dibuat di folder sementara yang terlindungi dan otomatis dihapus setelah proses download selesai.
+                    </div>
+
+                    <form method="post" id="dumpDatabaseForm" class="mt-auto">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="dump_database">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="dumpMode">Isi Dump</label>
+                            <select class="form-select" name="dump_mode" id="dumpMode" required>
+                                <option value="full">Struktur dan data</option>
+                                <option value="structure">Struktur saja</option>
+                                <option value="data">Data saja</option>
+                            </select>
+                            <div class="form-text">Pilih dump lengkap untuk kebutuhan pemindahan atau arsip database.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="dumpCurrentPassword">Password Super Admin</label>
+                            <input class="form-control" type="password" name="current_password" id="dumpCurrentPassword" autocomplete="current-password" required>
+                            <div class="form-text">Konfirmasi ulang diperlukan karena dump dapat memuat data sensitif.</div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="confirm_dump" value="yes" id="confirmDatabaseDump" required>
+                            <label class="form-check-label" for="confirmDatabaseDump">
+                                Saya memahami bahwa file dump harus disimpan dengan aman.
+                            </label>
+                        </div>
+
+                        <button class="btn btn-outline-primary w-100" type="submit">
+                            <i class="bi bi-file-earmark-arrow-down me-2"></i>Download Dump SQL
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-4 col-lg-12">
             <div class="card soft-card h-100 border border-danger-subtle">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start gap-3 mb-3">
@@ -392,14 +763,25 @@ include 'includes/sidebar.php';
                         Sistem membuat backup pengaman otomatis sebelum restore. Jangan menutup halaman saat proses berjalan.
                     </div>
 
-                    <form method="post" enctype="multipart/form-data" onsubmit="return confirm('Restore akan mengubah isi database. Lanjutkan?');">
+                    <form method="post" enctype="multipart/form-data" id="restoreUploadForm">
                         <?php csrf_field(); ?>
                         <input type="hidden" name="action" value="restore_upload">
+                        <input type="hidden" name="sql_original_name" id="sqlOriginalName" value="">
 
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">File Backup (.sql)</label>
-                            <input class="form-control" type="file" name="sql_file" accept=".sql,application/sql,text/plain" required>
+                            <label class="form-label fw-semibold" for="sqlRestoreFile">File Backup (.sql)</label>
+                            <input class="form-control" type="file" name="sql_file" id="sqlRestoreFile" accept=".sql,text/plain,application/sql" data-upload-allowed-extensions="sql" data-upload-max-bytes="67108864" required>
                             <div class="form-text">Batas fitur: 64 MB. Konfigurasi server: upload_max_filesize <?php echo e($uploadMax); ?>, post_max_size <?php echo e($postMax); ?>.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="restoreCurrentPassword">Password Super Admin</label>
+                            <input class="form-control" type="password" name="current_password" id="restoreCurrentPassword" autocomplete="current-password" required>
+                            <div class="form-text">Diperlukan untuk mencegah restore oleh pihak yang mengambil alih sesi login.</div>
+                        </div>
+
+                        <div class="alert alert-light border small">
+                            File dipindahkan ke karantina nonpublik, diperiksa tipe dan isinya, lalu setiap perintah SQL divalidasi sebelum dijalankan.
                         </div>
 
                         <div class="form-check mb-3">
@@ -427,6 +809,13 @@ include 'includes/sidebar.php';
             <span class="badge bg-light text-dark border"><?php echo e(count($backups)); ?> file</span>
         </div>
         <div class="card-body p-4">
+            <?php if ($backups): ?>
+                <div class="alert alert-light border d-flex flex-column flex-md-row align-items-md-center gap-2 mb-3">
+                    <label class="small fw-semibold mb-0" for="savedRestoreCurrentPassword">Password Super Admin untuk restore tersimpan:</label>
+                    <input type="password" class="form-control form-control-sm" id="savedRestoreCurrentPassword" autocomplete="current-password" style="max-width: 280px;" placeholder="Masukkan password saat akan restore">
+                </div>
+            <?php endif; ?>
+
             <?php if (!$backups): ?>
                 <div class="text-center py-5 text-muted">
                     <i class="bi bi-database-x fs-1 d-block mb-2"></i>
@@ -460,11 +849,12 @@ include 'includes/sidebar.php';
                                                 <i class="bi bi-download"></i> Download
                                             </a>
 
-                                            <form method="post" onsubmit="return confirm('Restore database dari backup ini?');">
+                                            <form method="post" class="savedRestoreForm">
                                                 <?php csrf_field(); ?>
                                                 <input type="hidden" name="action" value="restore_saved">
                                                 <input type="hidden" name="filename" value="<?php echo e($backup['name']); ?>">
                                                 <input type="hidden" name="confirm_restore" value="yes">
+                                                <input type="hidden" name="current_password" value="" class="savedRestorePassword">
                                                 <button class="btn btn-sm btn-outline-danger" type="submit">
                                                     <i class="bi bi-arrow-counterclockwise"></i> Restore
                                                 </button>
@@ -489,4 +879,149 @@ include 'includes/sidebar.php';
         </div>
     </div>
 </main>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const dumpForm = document.getElementById('dumpDatabaseForm');
+
+    if (dumpForm) {
+        dumpForm.addEventListener('submit', function (event) {
+            if (!window.confirm('Buat dan download dump database sekarang?')) {
+                event.preventDefault();
+                return;
+            }
+
+            const submitButton = dumpForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Membuat dump...';
+            }
+        });
+    }
+
+    const resetForm = document.getElementById('resetDatabaseForm');
+    const resetInput = document.getElementById('resetSqlFile');
+    const resetOriginalName = document.getElementById('resetSqlOriginalName');
+
+    if (resetForm && resetInput && resetOriginalName) {
+        resetForm.addEventListener('submit', function (event) {
+            const phrase = document.getElementById('resetPhrase');
+            if (!phrase || phrase.value !== 'RESET DATABASE') {
+                event.preventDefault();
+                alert('Ketik RESET DATABASE dengan tepat.');
+                return;
+            }
+
+            if (!window.confirm('PERINGATAN: seluruh database aktif akan dihapus dan dibangun ulang dari dump. Lanjutkan?')) {
+                event.preventDefault();
+                return;
+            }
+
+            const file = resetInput.files && resetInput.files[0] ? resetInput.files[0] : null;
+            if (!file || !/\.sql$/i.test(file.name)) {
+                event.preventDefault();
+                alert('Pilih file dump dengan ekstensi .sql.');
+                return;
+            }
+
+            if (file.size <= 0 || file.size > 64 * 1024 * 1024) {
+                event.preventDefault();
+                alert('Ukuran file dump harus lebih dari 0 byte dan maksimal 64 MB.');
+                return;
+            }
+
+            resetOriginalName.value = file.name;
+
+            try {
+                const safeName = 'database-reset-' + Date.now() + '.upload';
+                const transportedFile = new File([file], safeName, {
+                    type: 'application/octet-stream',
+                    lastModified: file.lastModified
+                });
+                const transfer = new DataTransfer();
+                transfer.items.add(transportedFile);
+                resetInput.files = transfer.files;
+            } catch (error) {
+                // Server-side validation remains authoritative on older browsers.
+            }
+
+            const submitButton = resetForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Mereset database...';
+            }
+        });
+    }
+
+    const form = document.getElementById('restoreUploadForm');
+    const input = document.getElementById('sqlRestoreFile');
+    const originalName = document.getElementById('sqlOriginalName');
+
+    if (!form || !input || !originalName) return;
+
+    form.addEventListener('submit', function (event) {
+        if (!window.confirm('Restore akan mengubah isi database. Lanjutkan?')) {
+            event.preventDefault();
+            return;
+        }
+
+        const file = input.files && input.files[0] ? input.files[0] : null;
+
+        if (!file || !/\.sql$/i.test(file.name)) {
+            event.preventDefault();
+            alert('Pilih file dengan ekstensi .sql.');
+            return;
+        }
+
+        if (file.size <= 0 || file.size > 64 * 1024 * 1024) {
+            event.preventDefault();
+            alert('Ukuran file SQL harus lebih dari 0 byte dan maksimal 64 MB.');
+            return;
+        }
+
+        originalName.value = file.name;
+
+        // Some hosting/WAF rules reject multipart filenames ending in .sql before PHP runs.
+        // Transport the same bytes with a neutral non-executable name; the server still
+        // requires the original .sql name and performs full content/statement validation.
+        try {
+            const safeName = 'database-restore-' + Date.now() + '.upload';
+            const transportedFile = new File([file], safeName, {
+                type: 'application/octet-stream',
+                lastModified: file.lastModified
+            });
+            const transfer = new DataTransfer();
+            transfer.items.add(transportedFile);
+            input.files = transfer.files;
+        } catch (error) {
+            // Older browsers submit the original .sql filename; server-side validation remains active.
+        }
+    });
+
+    document.querySelectorAll('.savedRestoreForm').forEach(function (savedForm) {
+        savedForm.addEventListener('submit', function (event) {
+            if (!window.confirm('Restore database dari backup tersimpan ini?')) {
+                event.preventDefault();
+                return;
+            }
+
+            const passwordInput = document.getElementById('savedRestoreCurrentPassword');
+            const password = passwordInput ? passwordInput.value : '';
+            if (!password) {
+                event.preventDefault();
+                alert('Masukkan password Super Admin pada kolom di atas daftar backup.');
+                if (passwordInput) passwordInput.focus();
+                return;
+            }
+
+            const passwordField = savedForm.querySelector('.savedRestorePassword');
+            if (!passwordField) {
+                event.preventDefault();
+                return;
+            }
+
+            passwordField.value = password;
+        });
+    });
+});
+</script>
 <?php include 'includes/footer.php'; ?>

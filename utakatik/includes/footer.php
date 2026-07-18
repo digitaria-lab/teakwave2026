@@ -4,7 +4,7 @@ window.UPLOAD_SETTINGS = <?php echo json_encode(upload_settings_for_js()); ?>;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<?php if (in_array(basename($_SERVER['PHP_SELF']), ['products.php','contents.php'])): ?>
+<?php if (in_array(basename($_SERVER['PHP_SELF']), ['products.php','contents.php','videos.php'])): ?>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/2.0.8/js/dataTables.bootstrap5.min.js"></script>
@@ -239,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php endif; ?>
-<script src="assets/js/admin.js"></script>
+<?php $adminJsVersion = @filemtime(__DIR__ . '/../assets/js/admin.js') ?: '1'; ?>
+<script src="assets/js/admin.js?v=<?php echo rawurlencode((string) $adminJsVersion); ?>"></script>
 </body>
 </html>

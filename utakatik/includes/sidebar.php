@@ -53,6 +53,34 @@
         </div>
         <?php endif; ?>
 
+        <?php if(has_permission('videos-list') || has_permission('videos-add') || has_permission('videos-edit')): ?>
+        <div class="menu-group <?php echo in_array(basename($_SERVER['PHP_SELF']), ['videos.php','video-add.php','video-edit.php']) ? 'open' : ''; ?>">
+            <button class="menu-parent" type="button">
+                <span><i class="bi bi-play-btn-fill"></i> Video</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <div class="submenu">
+                <?php if(has_permission('videos-list')): ?>
+                <a href="videos.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'videos.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-list-ul"></i> List Video
+                </a>
+                <?php endif; ?>
+
+                <?php if(has_permission('videos-add')): ?>
+                <a href="video-add.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'video-add.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-plus-circle-fill"></i> Add Video
+                </a>
+                <?php endif; ?>
+
+                <?php if(has_permission('videos-edit')): ?>
+                <a href="video-edit.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'video-edit.php' ? 'active' : ''; ?>">
+                    <i class="bi bi-pencil-square"></i> Edit Video
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if(has_permission('products-list') || has_permission('products-add') || has_permission('products-edit')): ?>
         <div class="menu-group <?php echo in_array(basename($_SERVER['PHP_SELF']), ['products.php','product-add.php','product-edit.php']) ? 'open' : ''; ?>">
             <button class="menu-parent" type="button">

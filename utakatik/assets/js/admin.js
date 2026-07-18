@@ -229,13 +229,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     (input.getAttribute('accept') || '').includes('image') ||
                     /\.(jpg|jpeg|png|gif|webp|ico)/i.test(input.getAttribute('accept') || '');
 
-                const allowedSource = isImageField
-                    ? (uploadSettings.allowedImageExtensions || uploadSettings.allowedExtensions || [])
-                    : (uploadSettings.allowedExtensions || []);
+                // A sensitive/special upload field may define its own whitelist and size.
+                // Example: database restore accepts only .sql and must not inherit the
+                // global media whitelist (jpg, png, pdf, and so on).
+                const fieldAllowedAttribute = input.getAttribute('data-upload-allowed-extensions');
+                const fieldAllowedExtensions = fieldAllowedAttribute === null
+                    ? null
+                    : fieldAllowedAttribute
+                        .split(',')
+                        .map((ext) => String(ext).trim().toLowerCase().replace(/^\./, ''))
+                        .filter(Boolean);
 
-                const allowed = allowedSource.map((ext) => String(ext).toLowerCase().replace('.', ''));
-                const maxBytes = Number(uploadSettings.maxBytes || 0);
-                const maxMb = uploadSettings.maxMb || bytesToMb(maxBytes);
+                const allowedSource = fieldAllowedExtensions !== null
+                    ? fieldAllowedExtensions
+                    : (isImageField
+                        ? (uploadSettings.allowedImageExtensions || uploadSettings.allowedExtensions || [])
+                        : (uploadSettings.allowedExtensions || []));
+
+                const allowed = allowedSource.map((ext) => String(ext).toLowerCase().replace(/^\./, ''));
+                const fieldMaxBytes = Number(input.getAttribute('data-upload-max-bytes') || 0);
+                const maxBytes = fieldMaxBytes > 0
+                    ? fieldMaxBytes
+                    : Number(uploadSettings.maxBytes || 0);
+                const maxMb = fieldMaxBytes > 0
+                    ? bytesToMb(fieldMaxBytes)
+                    : (uploadSettings.maxMb || bytesToMb(maxBytes));
 
                 for (const file of files) {
                     const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';

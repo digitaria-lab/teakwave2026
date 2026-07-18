@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <?php if (in_array(basename($_SERVER['PHP_SELF']), ['products.php','contents.php'])): ?>
+    <?php if (in_array(basename($_SERVER['PHP_SELF']), ['products.php','contents.php','videos.php'])): ?>
     <link href="https://cdn.datatables.net/2.0.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <?php endif; ?>
     <?php if (in_array(basename($_SERVER['PHP_SELF']), ['product-add.php','product-edit.php','content-add.php','content-edit.php'])): ?>
