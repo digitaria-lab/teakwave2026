@@ -1,21 +1,15 @@
-# SEO-friendly product detail URL v2
-# Example:
-# /produk-edgerouter-x-gigabit
-# will be routed to:
-# /produk-detail.php?slug=edgerouter-x-gigabit
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule ^produk-([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
-</IfModule>
-
-# SEO-friendly product detail URL
-# Example:
-# /produk-detail/unifi-u6-plus-indoor-ap
-# will be routed to:
-# /produk-detail.php?slug=unifi-u6-plus-indoor-ap
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^produk-detail/([^/]+)/?$ produk-detail.php?slug=$1 [L,QSA]
-    RewriteRule ^video-([1-9][0-9]*)-([a-z0-9-]+)\.html$ video-detail.php?id=$1&slug=$2 [L,QSA,NC]
 
+    # SEO-friendly public video detail URL:
+    # video-25-judul-video.html -> video-detail.php?id=25&slug=judul-video
+    RewriteRule ^video-([1-9][0-9]*)-([a-z0-9-]+)\.html$ video-detail.php?id=$1&slug=$2 [L,QSA,NC]
+</IfModule>
+
+# Page-view collector must never be served from cache.
+<IfModule mod_headers.c>
+    <Files "analytics-collect.php">
+        Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+        Header always set Pragma "no-cache"
+    </Files>
 </IfModule>

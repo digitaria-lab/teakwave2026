@@ -5,6 +5,15 @@ $pageTitle = $pageTitle ?? $siteName;
 $activePage = $activePage ?? '';
 $extraHead = $extraHead ?? '';
 
+// Catat satu view unik untuk pengunjung + halaman + hari.
+try {
+    require_once __DIR__ . '/../utakatik/config/database.php';
+    require_once __DIR__ . '/page-view-tracker.php';
+    teakwave_track_page_view($pdo, (string) $pageTitle);
+} catch (Throwable $ignored) {
+    // Statistik tidak boleh mengganggu halaman publik.
+}
+
 $homeActive = ($activePage === 'home') ? ' active' : '';
 $profileActive = ($activePage === 'profile') ? ' active' : '';
 $productActive = ($activePage === 'product') ? ' active' : '';

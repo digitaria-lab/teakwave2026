@@ -157,6 +157,12 @@
         </a>
         <?php endif; ?>
 
+        <?php if(has_permission('page-views')): ?>
+        <a href="page-views.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'page-views.php' ? 'active' : ''; ?>">
+            <i class="bi bi-bar-chart-line-fill"></i> Page View Statistics
+        </a>
+        <?php endif; ?>
+
         <?php if(has_permission('backup-restore')): ?>
         <a href="backup-restore.php" class="<?php echo basename($_SERVER['PHP_SELF']) === 'backup-restore.php' ? 'active' : ''; ?>">
             <i class="bi bi-database-fill-gear"></i> Backup & Restore

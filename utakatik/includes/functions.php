@@ -1372,6 +1372,17 @@ function ensure_video_schema() {
     $checked = true;
 }
 
+function ensure_page_view_schema() {
+    global $pdo;
+    if (!isset($pdo) || !($pdo instanceof PDO)) return;
+    require_once __DIR__ . '/../../includes/page-view-tracker.php';
+    teakwave_ensure_page_view_schema($pdo);
+
+    $roles = $pdo->query("SELECT id FROM roles WHERE id IN (1,2)")->fetchAll(PDO::FETCH_COLUMN);
+    $insert = $pdo->prepare("INSERT IGNORE INTO role_permissions (role_id, page_key) VALUES (?, 'page-views')");
+    foreach ($roles as $roleId) $insert->execute([(int) $roleId]);
+}
+
 function is_super_admin() {
     return (($_SESSION['user']['role_id'] ?? null) == 1) || strtolower($_SESSION['user']['role_name'] ?? '') === 'super admin';
 }
@@ -1399,6 +1410,7 @@ function dashboard_pages() {
         'files' => 'File / Image Management',
         'banners' => 'Banner Ads Management',
         'logs' => 'Activity Logs',
+        'page-views' => 'Page View Statistics',
         'website-settings' => 'Website Front Settings',
         'backup-restore' => 'Backup & Restore Database'
     ];
@@ -1423,6 +1435,7 @@ function page_key_from_file($file) {
         'files.php' => 'files',
         'banners.php' => 'banners',
         'logs.php' => 'logs',
+        'page-views.php' => 'page-views',
         'website-settings.php' => 'website-settings',
         'backup-restore.php' => 'backup-restore'
     ];

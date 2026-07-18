@@ -6,6 +6,8 @@ $users = $pdo->query("SELECT COUNT(*) AS total FROM users")->fetch()['total'];
 $products = $pdo->query("SELECT COUNT(*) AS total FROM products")->fetch()['total'];
 $contents = $pdo->query("SELECT COUNT(*) AS total FROM contents")->fetch()['total'];
 $banners = $pdo->query("SELECT COUNT(*) AS total FROM banners")->fetch()['total'];
+$uniqueViewsToday = $pdo->query("SELECT COUNT(*) FROM page_views WHERE view_date = CURDATE()")->fetchColumn();
+$uniqueVisitorsToday = $pdo->query("SELECT COUNT(DISTINCT visitor_hash) FROM page_views WHERE view_date = CURDATE()")->fetchColumn();
 
 $latestProducts = $pdo->query("SELECT * FROM products ORDER BY id DESC LIMIT 5")->fetchAll();
 $latestUsers = $pdo->query("SELECT users.*, roles.name AS role_name FROM users JOIN roles ON roles.id=users.role_id ORDER BY users.id DESC LIMIT 5")->fetchAll();
@@ -17,10 +19,10 @@ include 'includes/sidebar.php';
     <?php include 'includes/topbar.php'; ?>
 
     <div class="stats-grid">
-        <div class="stat-card"><div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-cash-stack"></i></div><div><span>Total Users</span><h3><?php echo e($users); ?></h3><small class="text-success">+15.8%</small></div></div>
-        <div class="stat-card"><div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div><div><span>Products</span><h3><?php echo e($products); ?></h3><small class="text-success">+7.2%</small></div></div>
-        <div class="stat-card"><div class="stat-icon bg-info-subtle text-info"><i class="bi bi-file-text"></i></div><div><span>Contents</span><h3><?php echo e($contents); ?></h3><small class="text-success">+5.4%</small></div></div>
-        <div class="stat-card"><div class="stat-icon bg-danger-subtle text-danger"><i class="bi bi-badge-ad"></i></div><div><span>Banner Ads</span><h3><?php echo e($banners); ?></h3><small class="text-success">+0.5%</small></div></div>
+        <div class="stat-card"><div class="stat-icon bg-primary-subtle text-primary"><i class="bi bi-eye-fill"></i></div><div><span>Unique Views Today</span><h3><?php echo e($uniqueViewsToday); ?></h3><small><a href="page-views.php" class="text-decoration-none">View statistics</a></small></div></div>
+        <div class="stat-card"><div class="stat-icon bg-success-subtle text-success"><i class="bi bi-people-fill"></i></div><div><span>Visitors Today</span><h3><?php echo e($uniqueVisitorsToday); ?></h3><small class="text-muted">Unique visitors</small></div></div>
+        <div class="stat-card"><div class="stat-icon bg-warning-subtle text-warning"><i class="bi bi-box-seam"></i></div><div><span>Products</span><h3><?php echo e($products); ?></h3><small class="text-muted"><?php echo e($users); ?> users</small></div></div>
+        <div class="stat-card"><div class="stat-icon bg-info-subtle text-info"><i class="bi bi-file-text"></i></div><div><span>Contents</span><h3><?php echo e($contents); ?></h3><small class="text-muted"><?php echo e($banners); ?> banners</small></div></div>
     </div>
 
     <div class="dashboard-grid mt-4">
