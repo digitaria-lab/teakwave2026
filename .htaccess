@@ -1,33 +1,95 @@
 Options -Indexes
 Options -MultiViews
+DirectoryIndex index.php
+AddDefaultCharset UTF-8
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Jangan memproses file dan folder yang benar-benar tersedia
+    # Normalisasi trailing slash pada halaman publik.
+    # URL tanpa slash dipakai agar aset relatif tetap benar saat aplikasi
+    # dipasang di root domain maupun di subfolder seperti /teakwave/.
+    RewriteCond %{THE_REQUEST} \s/+.*(?:tentang-kami|produk|kontak|video)/+[?\s] [NC]
+    RewriteRule ^(tentang-kami|produk|kontak|video)/+$ $1 [R=301,L,NE]
+
+    # Redirect URL PHP publik ke URL kanonis yang bersih.
+    # Target dibuat relatif supaya tetap bekerja saat dipasang di subfolder.
+    RewriteCond %{THE_REQUEST} \s/+.*index\.php(?:[?\s]) [NC]
+    RewriteRule ^index\.php$ ./ [R=301,L]
+    RewriteCond %{THE_REQUEST} \s/+.*profil\.php(?:[?\s]) [NC]
+    RewriteRule ^profil\.php$ tentang-kami [R=301,L]
+    RewriteCond %{THE_REQUEST} \s/+.*produk\.php(?:[?\s]) [NC]
+    RewriteRule ^produk\.php$ produk [R=301,L]
+    RewriteCond %{THE_REQUEST} \s/+.*kontak\.php(?:[?\s]) [NC]
+    RewriteRule ^kontak\.php$ kontak [R=301,L]
+    RewriteCond %{THE_REQUEST} \s/+.*video\.php(?:[?\s]) [NC]
+    RewriteRule ^video\.php$ video [R=301,L]
+
+    # Sitemap dinamis.
+    RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+    # Halaman publik SEO-friendly harus diproses SEBELUM pengecekan folder.
+    # Hal ini penting karena folder /produk/ juga dipakai untuk menyimpan gambar.
+    # Tanpa urutan ini, Apache menganggap /produk/ sebagai direktori fisik dan
+    # mengembalikan 403 karena directory listing dinonaktifkan.
+    RewriteRule ^tentang-kami/?$ profil.php [L,QSA,NC]
+    RewriteRule ^produk/?$ produk.php [L,QSA,NC]
+    RewriteRule ^kontak/?$ kontak.php [L,QSA,NC]
+    RewriteRule ^video/?$ video.php [L,QSA,NC]
+
+    # Jangan memproses file dan folder lain yang benar-benar tersedia.
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
 
-    # Detail produk SEO-friendly
-    # /produk-mikrotik-crs518-16xs-2xq-rm
-    # diarahkan ke:
-    # /produk-detail.php?slug=mikrotik-crs518-16xs-2xq-rm
+    # Detail produk: /produk-nama-produk
     RewriteRule ^produk-([a-z0-9][a-z0-9-]*)/?$ produk-detail.php?slug=$1 [L,QSA,NC]
 
-    # Detail video SEO-friendly
+    # Detail video: /video-12-judul-video.html
     RewriteRule ^video-([1-9][0-9]*)-([a-z0-9-]+)\.html$ video-detail.php?id=$1&slug=$2 [L,QSA,NC]
 </IfModule>
 
-# Lindungi file sensitif
+# Lindungi file sensitif.
 <FilesMatch "^(\.env|composer\.(json|lock)|.*\.(sql|log|ini|bak|dist))$">
     Require all denied
 </FilesMatch>
 
-# Page-view collector must never be served from cache.
 <IfModule mod_headers.c>
-    <Files "analytics-collect.php">
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    <FilesMatch "\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(?:php|html)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+    </FilesMatch>
+    <FilesMatch "^(analytics-collect|settings|products|banners|contents)\.php$">
         Header always set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header always set Pragma "no-cache"
-    </Files>
+    </FilesMatch>
 </IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript application/json application/xml image/svg+xml
+</IfModule>
+
+FileETag MTime Size
+upload_max_filesize 128M
+post_max_size 140M
+memory_limit 256M
+max_execution_time 600
+max_input_time 600

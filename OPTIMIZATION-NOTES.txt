@@ -1,0 +1,31 @@
+TEAKWAVE FRONT-END SEO & PERFORMANCE OPTIMIZATION
+==================================================
+
+Perubahan utama:
+- Banner utama dikonversi ke WebP dan gambar produk/static diperkecil sesuai kebutuhan tampilan.
+- Upload gambar besar dioptimalkan tanpa mengubah nama file/database path.
+- Meta description, canonical, Open Graph, Twitter Card, robots, dan favicon ditambahkan secara konsisten.
+- Schema.org Organization, WebSite, ItemList, dan Product ditambahkan.
+- Katalog serta detail produk dirender di server agar tetap terbaca mesin pencari tanpa JavaScript.
+- Data awal produk disisipkan sebagai JSON sehingga browser tidak perlu mengulang request API.
+- JavaScript non-kritis (banner, content, settings) dijalankan saat browser idle.
+- CSS/JS menggunakan versi ringan, defer, cache jangka panjang, gzip, dan content-visibility.
+- URL publik bersih: /tentang-kami, /produk, /kontak, /video, dan /produk-nama-produk.
+- robots.txt dan sitemap.xml dinamis ditambahkan.
+- Front-end tetap tampil ketika database belum dikonfigurasi; fitur dinamis aktif kembali setelah database tersedia.
+
+Konfigurasi deployment:
+1. Aktifkan Apache mod_rewrite, mod_headers, mod_expires, dan mod_deflate.
+2. Pastikan AllowOverride All aktif agar .htaccess dibaca.
+3. Konfigurasikan database melalui environment DB_HOST, DB_NAME, DB_USER, DB_PASSWORD,
+   atau isi nilai fallback di utakatik/config/database.php.
+4. Bila domain berbeda dari https://teakwave.com, set environment TEAKWAVE_SITE_URL.
+5. Import database/digitaria_dashboard.sql bila database belum tersedia.
+6. Setelah upload, buka /sitemap.xml dan daftarkan ke Google Search Console.
+
+Hasil pengujian:
+- 58 file PHP lolos php -l.
+- Halaman index, profil, produk, kontak, video, dan sitemap merespons HTTP 200.
+- Halaman detail tanpa produk yang valid merespons HTTP 404.
+- JSON-LD halaman utama dan katalog berhasil diparse.
+- Referensi aset lokal pada halaman publik telah diverifikasi.

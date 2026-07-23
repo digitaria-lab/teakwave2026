@@ -1,8 +1,8 @@
 <?php
-$host = '';
-$dbname = '';
-$username = '';
-$password = '';
+$host = 'localhost';
+$dbname = 'nzcglkgn_teakwave';
+$username = 'nzcglkgn_teakwave';
+$password = 'Angakhoo1986';
 
 if ($dbname === '') {
     throw new RuntimeException('Database belum dikonfigurasi. Isi DB_NAME atau variabel $dbname.');
