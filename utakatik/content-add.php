@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$content_id, $img, $index]);
         }
 
-        log_activity('create', 'contents', 'Menambahkan content: ' . $title);
         $pdo->commit();
+        log_activity('create', 'contents', 'Menambahkan content: ' . $title);
         redirect('contents.php');
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

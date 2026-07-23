@@ -115,8 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
             }
         }
 
-        log_activity('update', 'contents', 'Mengubah content: ' . $title);
         $pdo->commit();
+        log_activity('update', 'contents', 'Mengubah content: ' . $title);
         redirect('content-edit.php?id=' . intval($_POST['id']));
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

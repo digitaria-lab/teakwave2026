@@ -46,8 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$product_id, $img, $isPrimary]);
         }
 
-        log_activity('create', 'products', 'Menambahkan produk: ' . $name);
         $pdo->commit();
+        log_activity('create', 'products', 'Menambahkan produk: ' . $name);
         redirect('products.php');
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();

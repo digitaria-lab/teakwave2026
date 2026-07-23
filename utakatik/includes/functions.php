@@ -1016,6 +1016,30 @@ function log_activity($action, $module, $description = '', $forceSchemaRefresh =
 
     $record = activity_log_session_record($action, $module, $description);
     if ($record['action'] === '' || $record['module'] === '') return false;
+    if (!isset($pdo) || !($pdo instanceof PDO)) return false;
+
+    /*
+     * MySQL performs an implicit COMMIT for DDL statements such as CREATE TABLE
+     * and ALTER TABLE. Schema repair must therefore never run while a business
+     * transaction is active, otherwise the caller's later commit() fails with
+     * "There is no active transaction".
+     *
+     * During an active transaction we only attempt the normal INSERT. If the
+     * audit table is unavailable or outdated, queue the event for a later
+     * non-transactional request instead of touching the schema.
+     */
+    if ($pdo->inTransaction()) {
+        try {
+            activity_log_insert_record($pdo, $record);
+            return true;
+        } catch (Throwable $transactionError) {
+            activity_log_write_error(
+                'Audit insert ditunda karena transaksi aktif: ' . $transactionError->getMessage()
+            );
+            activity_log_queue_record($record, $transactionError->getMessage());
+            return false;
+        }
+    }
 
     try {
         ensure_activity_log_schema($forceSchemaRefresh);

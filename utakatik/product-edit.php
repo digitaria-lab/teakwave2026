@@ -130,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
             }
         }
 
-        log_activity('update', 'products', 'Mengubah produk: ' . $name);
         $pdo->commit();
+        log_activity('update', 'products', 'Mengubah produk: ' . $name);
         redirect('product-edit.php?id=' . intval($_POST['id']));
     } catch (Exception $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
