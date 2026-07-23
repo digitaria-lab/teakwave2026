@@ -1462,7 +1462,7 @@ html {
 
 .catalog-name {
   background: var(--accent);
-  min-height: 48px;
+  min-height: 64px;
   padding: 10px 8px;
   text-align: center;
   font-size: .74rem;
