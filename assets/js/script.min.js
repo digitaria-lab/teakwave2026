@@ -14,6 +14,72 @@
 
   let externalUrls = { ...defaultExternalUrls };
 
+  const siteBaseUrl = (() => {
+    const configured = document.querySelector('meta[name="teakwave-base-url"]')?.content?.trim();
+    if (configured) return configured.replace(/\/$/, '');
+
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const firstSegment = parts.length ? `/${parts[0]}` : '';
+    return `${window.location.origin}${firstSegment}`.replace(/\/$/, '');
+  })();
+
+  function normalizePublicAssetUrl(path, fallbackPath = '') {
+    let raw = String(path || '').trim();
+    if (!raw) raw = String(fallbackPath || '').trim();
+    if (!raw) return '';
+    if (/^https?:\/\//i.test(raw)) return raw;
+
+    raw = raw.replace(/\\/g, '/').replace(/[?#].*$/, '');
+    const knownPath = raw.match(/(?:^|\/)(uploads|produk|assets)\/(.+)$/i);
+    if (knownPath) {
+      raw = `${knownPath[1].toLowerCase()}/${knownPath[2]}`;
+    }
+
+    raw = raw.replace(/^(?:\.\/|\.\.\/)+/, '').replace(/^\/+/, '');
+    if (raw.startsWith('utakatik/assets/uploads/') || raw.startsWith('assets/uploads/')) {
+      raw = `uploads/${raw.split('/').pop()}`;
+    } else if (!raw.includes('/')) {
+      // Nama file dari dashboard umumnya berasal dari folder uploads.
+      raw = `uploads/${raw}`;
+    }
+
+    return `${siteBaseUrl}/${raw}`;
+  }
+
+  function preloadImageUrl(url) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(url);
+      image.onerror = reject;
+      image.src = url;
+    });
+  }
+
+  function bindImageFallbacks(root = document) {
+    root.querySelectorAll('img[data-fallback-src]').forEach((image) => {
+      if (image.dataset.fallbackBound === 'true') return;
+      image.dataset.fallbackBound = 'true';
+
+      const normalizedSource = normalizePublicAssetUrl(image.getAttribute('src'), image.dataset.fallbackSrc);
+      const fallbackSource = normalizePublicAssetUrl(image.dataset.fallbackSrc || 'produk/1.png');
+      if (normalizedSource) image.src = normalizedSource;
+
+      const applyFallback = () => {
+        if (image.dataset.fallbackApplied !== 'true' && fallbackSource && image.src !== fallbackSource) {
+          image.dataset.fallbackApplied = 'true';
+          image.src = fallbackSource;
+          return;
+        }
+        image.classList.add('is-image-missing');
+      };
+
+      image.addEventListener('error', applyFallback);
+      if (image.complete && image.naturalWidth === 0) {
+        applyFallback();
+      }
+    });
+  }
+
   function getExternalUrl(key) {
     return externalUrls[key] || defaultExternalUrls[key] || '#';
   }
@@ -51,7 +117,7 @@
     applyExternalUrlSettings(document);
 
     try {
-      const response = await fetch('api/settings.php', {
+      const response = await fetch(`${siteBaseUrl}/api/settings.php`, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store'
       });
@@ -73,18 +139,29 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    initExternalUrlSettings();
+    applyExternalUrlSettings(document);
     initHeroHeaderSlides();
-    initDynamicBanners();
-    initDynamicContents();
     initFixedMarketplaceLinks();
     initFixedFooterSocialLinks();
     initRevealAnimation();
     initFloatingActions();
     initNavbarActiveState();
+    bindImageFallbacks(document);
     initBestSellerProducts();
     initProductCatalog();
     initProductDetailGallery();
+
+    const loadDynamicContent = () => {
+      initExternalUrlSettings();
+      initDynamicBanners();
+      initDynamicContents();
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(loadDynamicContent, { timeout: 1800 });
+    } else {
+      window.setTimeout(loadDynamicContent, 500);
+    }
   });
 
 
@@ -346,7 +423,7 @@
   }
 
   async function fetchBanners(placement) {
-    const response = await fetch(`api/banners.php?placement=${encodeURIComponent(placement)}`, {
+    const response = await fetch(`${siteBaseUrl}/api/banners.php?placement=${encodeURIComponent(placement)}`, {
       headers: { 'Accept': 'application/json' },
       cache: 'no-store'
     });
@@ -369,13 +446,27 @@
       const banners = await fetchBanners(placement);
       if (!banners.length) return;
 
+      // Jangan mengganti banner statis sebelum file dari database terbukti dapat dimuat.
+      const checkedBanners = await Promise.all(banners.map(async (banner) => {
+        const image = normalizePublicAssetUrl(banner.image);
+        if (!image) return null;
+        try {
+          await preloadImageUrl(image);
+          return { ...banner, image };
+        } catch (error) {
+          console.warn('File banner tidak ditemukan:', image);
+          return null;
+        }
+      }));
+      const validBanners = checkedBanners.filter(Boolean);
+      if (!validBanners.length) return;
+
       const indicators = heroCarousel.querySelector('.carousel-indicators');
       const inner = heroCarousel.querySelector('.carousel-inner');
-
       if (!inner) return;
 
       if (indicators) {
-        indicators.innerHTML = banners.map((banner, index) => `
+        indicators.innerHTML = validBanners.map((banner, index) => `
           <button
             aria-current="${index === 0 ? 'true' : 'false'}"
             aria-label="Slide ${index + 1}"
@@ -386,7 +477,7 @@
         `).join('');
       }
 
-      inner.innerHTML = banners.map((banner, index) => {
+      inner.innerHTML = validBanners.map((banner, index) => {
         const image = escapeSharedHTML(banner.image);
         const title = escapeSharedHTML(banner.title || `Banner Teakwave ${index + 1}`);
         const link = banner.link_url ? escapeSharedHTML(banner.link_url) : '';
@@ -421,7 +512,11 @@
       const banners = await fetchBanners(placement);
       if (!banners.length || !banners[0].image) return;
 
-      target.style.backgroundImage = `url("${banners[0].image}")`;
+      const image = normalizePublicAssetUrl(banners[0].image);
+      if (!image) return;
+      await preloadImageUrl(image);
+
+      target.style.backgroundImage = `url("${image}")`;
       target.style.backgroundSize = 'cover';
       target.style.backgroundPosition = 'center center';
 
@@ -429,6 +524,7 @@
         target.setAttribute('aria-label', banners[0].title);
       }
     } catch (error) {
+      // Banner statis dari PHP tetap dipertahankan bila file database tidak valid.
       console.warn('Banner halaman tidak bisa dimuat:', error);
     }
   }
@@ -822,7 +918,7 @@
     if (!slug) return;
 
     try {
-      const response = await fetch(`api/contents.php?slug=${encodeURIComponent(slug)}`, {
+      const response = await fetch(`${siteBaseUrl}/api/contents.php?slug=${encodeURIComponent(slug)}`, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-store'
       });
@@ -875,12 +971,14 @@
     if (!inner) return;
 
     function formatProductUrl(product) {
-      return `produk-${escapeSharedHTML(product.slug || productSlug(product.name))}`;
+      const slug = product.slug || productSlug(product.name);
+      return `${siteBaseUrl}/produk-${encodeURIComponent(slug)}`;
     }
 
     function renderBestSellerCarousel(products) {
       if (!products.length) return;
 
+      const fallbackImage = normalizePublicAssetUrl('produk/1.png');
       const chunks = [];
       for (let i = 0; i < products.length; i += 5) {
         chunks.push(products.slice(i, i + 5));
@@ -888,22 +986,26 @@
 
       inner.innerHTML = chunks.map((chunk, chunkIndex) => `
         <div class="carousel-item ${chunkIndex === 0 ? 'active' : ''}">
-          <div class="row g-3">
-            ${chunk.map((product) => `
-              <div class="col-6 col-lg">
+          <div class="best-seller-grid">
+            ${chunk.map((product) => {
+              const image = normalizePublicAssetUrl(product.image, 'produk/1.png');
+              return `
+              <div class="best-seller-item">
                 <a class="best-seller-link" href="${formatProductUrl(product)}" aria-label="Lihat detail ${escapeSharedHTML(product.name)}">
                   <div class="product-card">
                     <div class="product-img">
-                      <img src="${escapeSharedHTML(product.image || './produk/1.png')}" alt="${escapeSharedHTML(product.name)}" loading="lazy" decoding="async">
+                      <img class="best-seller-product-photo" src="${escapeSharedHTML(image)}" data-fallback-src="${escapeSharedHTML(fallbackImage)}" alt="${escapeSharedHTML(product.name)}" loading="lazy" decoding="async" width="720" height="720">
                     </div>
-                    <div class="product-name">${escapeSharedHTML(product.name)}</div>
+                    <h3 class="product-name">${escapeSharedHTML(product.name)}</h3>
                   </div>
                 </a>
               </div>
-            `).join('')}
+            `}).join('')}
           </div>
         </div>
       `).join('');
+
+      bindImageFallbacks(inner);
 
       if (window.bootstrap) {
         const oldInstance = bootstrap.Carousel.getInstance(carousel);
@@ -912,7 +1014,20 @@
       }
     }
 
-    fetch('api/products.php?best_seller=1&limit=10', {
+    const initialDataNode = document.getElementById('initialBestSellerData');
+    if (initialDataNode) {
+      try {
+        const initialProducts = JSON.parse(initialDataNode.textContent || '[]');
+        if (Array.isArray(initialProducts) && initialProducts.length) {
+          renderBestSellerCarousel(initialProducts);
+          return;
+        }
+      } catch (error) {
+        console.warn('Data awal best seller tidak valid:', error);
+      }
+    }
+
+    fetch(`${siteBaseUrl}/api/products.php?best_seller=1&limit=10`, {
       headers: { 'Accept': 'application/json' },
       cache: 'no-store'
     })
@@ -961,21 +1076,7 @@
     }
 
     function normalizeAssetPath(path, fallbackPath = 'produk/1.png') {
-      const raw = String(path || '').trim();
-      if (!raw) return fallbackPath;
-      if (/^https?:\/\//i.test(raw)) return raw;
-
-      const normalized = raw.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\.\.\//, '');
-      if (normalized.startsWith('uploads/') || normalized.startsWith('produk/') || normalized.startsWith('assets/')) {
-        return normalized;
-      }
-      if (normalized.startsWith('utakatik/assets/uploads/')) {
-        return `uploads/${normalized.split('/').pop()}`;
-      }
-      if (normalized.startsWith('assets/uploads/')) {
-        return `uploads/${normalized.split('/').pop()}`;
-      }
-      return `produk/${normalized}`;
+      return normalizePublicAssetUrl(path, fallbackPath);
     }
 
     function setCatalogLoading(isLoading) {
@@ -1019,17 +1120,18 @@
       const safeBrand = escapeHTML(product.brand || '');
       const safeName = escapeHTML(product.name || 'Produk Teakwave');
       const imageSrc = escapeHTML(normalizeAssetPath(product.image));
+      const fallbackSrc = escapeHTML(normalizeAssetPath('produk/1.png'));
       const detailSlug = escapeHTML(product.slug || productSlug(product.name || 'produk'));
 
       return `
         <div data-product-card data-brand="${safeBrand}" data-name="${safeName}">
-          <a class="catalog-link" href="produk-${detailSlug}" aria-label="Lihat detail ${safeName}">
+          <a class="catalog-link" href="${siteBaseUrl}/produk-${detailSlug}" aria-label="Lihat detail ${safeName}">
             <article class="catalog-card">
               <div class="catalog-img">
-                <img class="catalog-product-photo" src="${imageSrc}" alt="${safeName}" loading="lazy" decoding="async">
+                <img class="catalog-product-photo" src="${imageSrc}" data-fallback-src="${fallbackSrc}" alt="${safeName}" loading="lazy" decoding="async" width="720" height="720">
                 <div class="catalog-device catalog-device-fallback" aria-hidden="true" hidden></div>
               </div>
-              <div class="catalog-name">${safeName}</div>
+              <h2 class="catalog-name">${safeName}</h2>
             </article>
           </a>
         </div>
@@ -1037,14 +1139,17 @@
     }
 
     function bindCatalogImageFallbacks() {
+      bindImageFallbacks(catalogGrid);
       catalogGrid.querySelectorAll('.catalog-product-photo').forEach((img) => {
+        if (img.dataset.catalogFallbackBound === 'true') return;
+        img.dataset.catalogFallbackBound = 'true';
         img.addEventListener('error', () => {
+          if (img.dataset.fallbackApplied !== 'true') return;
           const imageBox = img.closest('.catalog-img');
           const fallbackDevice = imageBox ? imageBox.querySelector('.catalog-device-fallback') : null;
           if (imageBox) imageBox.classList.add('is-fallback');
           if (fallbackDevice) fallbackDevice.removeAttribute('hidden');
-          img.remove();
-        }, { once: true });
+        });
       });
     }
 
@@ -1144,11 +1249,26 @@
     }
 
     async function loadProductsFromDatabase() {
+      const initialDataNode = document.getElementById('initialCatalogData');
+      if (initialDataNode) {
+        try {
+          const initialPayload = JSON.parse(initialDataNode.textContent || '{}');
+          if (Array.isArray(initialPayload.products) && initialPayload.products.length) {
+            products = initialPayload.products;
+            renderBrandFilters(initialPayload.brands || products.map((product) => product.brand));
+            renderCatalog(1);
+            return;
+          }
+        } catch (error) {
+          console.warn('Data awal katalog tidak valid:', error);
+        }
+      }
+
       setCatalogLoading(true);
       showCatalogPreloader();
 
       try {
-        const response = await fetch('api/products.php', {
+        const response = await fetch(`${siteBaseUrl}/api/products.php`, {
           headers: { 'Accept': 'application/json' },
           cache: 'no-store'
         });
@@ -1222,7 +1342,7 @@
       const detailIndex = parts.indexOf('produk-detail');
       return detailIndex >= 0 ? parts[detailIndex + 1] : '';
     })();
-    const fallbackImage = 'produk/1.png';
+    const fallbackImage = normalizePublicAssetUrl('produk/1.png');
     let productPhotos = [{ alt: 'Foto produk', src: fallbackImage }];
     let activeProductPhotoIndex = 0;
     let productImageModalInstance = null;
@@ -1331,7 +1451,7 @@
         button.className = `thumb-btn${index === 0 ? ' active' : ''}`;
         button.setAttribute('aria-label', `Lihat ${photo.alt}`);
         button.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-        button.innerHTML = `<img src="${escapeHTML(photo.src)}" alt="${escapeHTML(photo.alt)}">`;
+        button.innerHTML = `<img src="${escapeHTML(photo.src)}" alt="${escapeHTML(photo.alt)}" width="720" height="720" loading="lazy" decoding="async">`;
         button.addEventListener('click', () => setActiveProductPhoto(index));
         productThumbs.appendChild(button);
       });
@@ -1394,7 +1514,7 @@
           ${productPriceHTML}
           <div class="detail-actions">
             <a class="detail-action-btn primary" data-external-url="whatsapp" data-whatsapp-message="${escapeHTML('Halo, saya tertarik dengan produk ' + product.name)}" href="${escapeHTML(buildWhatsappUrl('Halo, saya tertarik dengan produk ' + product.name))}" rel="noopener" target="_blank"><i class="bi bi-whatsapp"></i> Tanya via WhatsApp</a>
-            <a class="detail-action-btn secondary" href="produk.php"><i class="bi bi-grid"></i> Kembali ke Produk</a>
+            <a class="detail-action-btn secondary" href="produk"><i class="bi bi-grid"></i> Kembali ke Produk</a>
           </div>
         `;
         if (shouldShowPrice) syncDetailPriceWidth();
@@ -1410,6 +1530,19 @@
     }
 
     async function loadProductDetail() {
+      const initialDataNode = document.getElementById('initialProductData');
+      if (initialDataNode) {
+        try {
+          const initialProduct = JSON.parse(initialDataNode.textContent || '{}');
+          if (initialProduct && initialProduct.name) {
+            renderProductDetail(initialProduct);
+            return;
+          }
+        } catch (error) {
+          console.warn('Data awal detail produk tidak valid:', error);
+        }
+      }
+
       if (!productId && !productSlugParam) {
         renderProductThumbs();
         return;
@@ -1417,8 +1550,8 @@
 
       try {
         const detailUrl = productId
-          ? `api/products.php?mode=detail&id=${encodeURIComponent(productId)}`
-          : `api/products.php?mode=detail&slug=${encodeURIComponent(productSlugParam)}`;
+          ? `${siteBaseUrl}/api/products.php?mode=detail&id=${encodeURIComponent(productId)}`
+          : `${siteBaseUrl}/api/products.php?mode=detail&slug=${encodeURIComponent(productSlugParam)}`;
 
         const response = await fetch(detailUrl, {
           headers: { 'Accept': 'application/json' },
@@ -1444,7 +1577,7 @@
             <div class="detail-divider"></div>
             <p>Produk belum bisa dimuat dari database. Pastikan database dashboard aktif dan produk berstatus active.</p>
             <div class="detail-actions">
-              <a class="detail-action-btn secondary" href="produk.php"><i class="bi bi-grid"></i> Kembali ke Produk</a>
+              <a class="detail-action-btn secondary" href="produk"><i class="bi bi-grid"></i> Kembali ke Produk</a>
             </div>
           `;
         }

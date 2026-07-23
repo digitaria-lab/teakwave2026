@@ -3796,3 +3796,208 @@ svg {
     align-items:center;
     justify-content:center;
 }
+
+/* Performance, accessibility, and semantic heading refinements */
+html{scroll-padding-top:86px}
+img{max-width:100%;height:auto}
+.skip-link{position:fixed;top:10px;left:10px;z-index:2000;padding:10px 14px;border-radius:8px;background:#fff;color:var(--primary);font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.18);transform:translateY(-160%);transition:transform .2s ease}
+.skip-link:focus{transform:translateY(0)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid rgba(255,91,10,.55);outline-offset:3px}
+.product-name,.catalog-name{margin:0;font-size:inherit;line-height:1.35}
+.testimonial-card footer{color:rgba(255,255,255,.8);font-size:.875em}
+.section-space,.catalog-section,.brand-section,.product-detail-section,.profile-footer-space,footer{content-visibility:auto;contain-intrinsic-size:1px 700px}
+.product-description-from-db img{height:auto;max-width:100%}
+@media (prefers-reduced-motion:reduce){html,*{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.reveal{opacity:1!important;transform:none!important}}
+
+/* =========================================================
+   HOTFIX: HERO BANNER + BEST SELLER IMAGE
+   ========================================================= */
+/* Hero utama merupakan konten LCP, sehingga tidak boleh tersembunyi
+   saat JavaScript terlambat atau gagal dimuat. */
+.hero-card,
+.profile-hero-card,
+.produk-hero-card,
+.contact-hero-card {
+  opacity: 1 !important;
+  transform: none !important;
+  visibility: visible !important;
+}
+
+/* Lima kartu konsisten di desktop, tanpa bergantung pada pembagian kolom Bootstrap. */
+.best-seller-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+
+.best-seller-item {
+  min-width: 0;
+  height: 100%;
+}
+
+#productCarousel .best-seller-link,
+#productCarousel .product-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+#productCarousel .product-img {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  padding: 18px;
+}
+
+#productCarousel .product-img img,
+#productCarousel .best-seller-product-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 150px;
+  max-height: 150px;
+  object-fit: contain;
+  object-position: center;
+}
+
+#productCarousel .product-name {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 80px;
+  padding: 16px 12px;
+}
+
+/* Gambar katalog juga mempertahankan rasio aslinya. */
+.catalog-img .catalog-product-photo {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+@media (max-width: 991.98px) {
+  .best-seller-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .best-seller-grid {
+    gap: 12px;
+  }
+
+  #productCarousel .product-img {
+    aspect-ratio: 1 / 1;
+    padding: 12px;
+  }
+
+  #productCarousel .product-name {
+    min-height: 88px;
+    padding: 12px 8px;
+    font-size: .92rem;
+  }
+}
+
+/* =========================================================
+   PRODUCT CATALOG TITLE EQUAL HEIGHT
+   Menyamakan tinggi area judul merah dan memusatkan teks.
+   ========================================================= */
+#catalogGrid .catalog-card {
+  display: flex;
+  flex-direction: column;
+}
+
+#catalogGrid .catalog-img {
+  flex: 1 1 auto;
+}
+
+#catalogGrid .catalog-name {
+  box-sizing: border-box;
+  flex: 0 0 64px;
+  width: 100%;
+  height: 64px;
+  min-height: 64px;
+  max-height: 64px;
+  margin: 0;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: .74rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+  #catalogGrid .catalog-name {
+    flex-basis: 68px;
+    height: 68px;
+    min-height: 68px;
+    max-height: 68px;
+    padding: 8px;
+    font-size: .72rem;
+  }
+}
+
+/* Product detail specification table: improve row readability */
+.product-description-from-db table {
+  width: 100%;
+  margin: 14px 0 22px;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
+}
+
+.product-description-from-db table tr {
+  border-bottom: 1px solid rgba(31, 36, 43, .18);
+}
+
+.product-description-from-db table th,
+.product-description-from-db table td {
+  padding: 10px 14px;
+  border: 0;
+  vertical-align: top;
+  color: #1f242b;
+  font-size: .98rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.product-description-from-db table th:first-child,
+.product-description-from-db table td:first-child {
+  width: 30%;
+  min-width: 170px;
+  padding-left: 0;
+  font-weight: 700;
+}
+
+.product-description-from-db table th:last-child,
+.product-description-from-db table td:last-child {
+  padding-right: 0;
+}
+
+@media (max-width: 575.98px) {
+  .product-description-from-db table th,
+  .product-description-from-db table td {
+    padding-top: 9px;
+    padding-bottom: 9px;
+    font-size: .92rem;
+  }
+
+  .product-description-from-db table th:first-child,
+  .product-description-from-db table td:first-child {
+    width: 38%;
+    min-width: 112px;
+    padding-right: 10px;
+  }
+}
+

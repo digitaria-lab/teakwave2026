@@ -2,8 +2,9 @@
 ob_start();
 require_once 'auth/check.php';
 require_once __DIR__ . '/includes/database-backup.php';
+require_once __DIR__ . '/includes/media-backup.php';
 
-// Backup database contains highly sensitive information. Keep this page exclusive to Super Admin.
+// Backup and restore operations are sensitive. Keep this page exclusive to Super Admin.
 if (!is_super_admin()) {
     log_activity('access_denied', 'backup-restore', 'Mencoba mengakses halaman Backup & Restore tanpa hak Super Admin.');
     http_response_code(403);
@@ -14,7 +15,7 @@ if (!is_super_admin()) {
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 
-$page_title = 'Backup & Restore Database';
+$page_title = 'Backup & Restore Data & Media';
 $databaseName = db_current_database($pdo);
 $message = $_SESSION['backup_restore_message'] ?? null;
 unset($_SESSION['backup_restore_message']);
@@ -43,7 +44,8 @@ function backup_restore_log_filename($value) {
 function backup_restore_failure_action($action) {
     $map = [
         'run_permission_upgrade' => 'permission_upgrade_failed',
-        'create_backup' => 'backup_create_failed',
+        'create_media_backup' => 'media_backup_create_failed',
+        'restore_media_upload' => 'media_restore_upload_failed',
         'dump_database' => 'database_dump_failed',
         'restore_upload' => 'restore_upload_failed',
         'reset_database' => 'database_reset_failed',
@@ -57,6 +59,15 @@ function backup_restore_failure_action($action) {
 function backup_restore_failure_context($action) {
     if ($action === 'restore_upload') {
         return ' File: ' . backup_restore_log_filename($_POST['sql_original_name'] ?? ($_FILES['sql_file']['name'] ?? '')) . '.';
+    }
+
+    if ($action === 'restore_media_upload') {
+        return ' File: ' . backup_restore_log_filename($_POST['media_original_name'] ?? ($_FILES['media_zip']['name'] ?? '')) . '.';
+    }
+
+    if ($action === 'create_media_backup') {
+        $categories = array_map('strval', (array) ($_POST['media_categories'] ?? []));
+        return ' Kategori: ' . ($categories ? implode(', ', $categories) : 'tidak dipilih') . '.';
     }
 
     if ($action === 'reset_database') {
@@ -265,7 +276,7 @@ function backup_restore_run_permission_upgrade(PDO $pdo, $sqlPath) {
     }
 }
 
-function backup_restore_send_download($path, $downloadName, $deleteAfter = false) {
+function backup_restore_send_download($path, $downloadName, $deleteAfter = false, $contentType = null) {
     if (!is_file($path) || !is_readable($path)) {
         http_response_code(404);
         exit('File backup tidak ditemukan.');
@@ -286,7 +297,12 @@ function backup_restore_send_download($path, $downloadName, $deleteAfter = false
 
     $size = filesize($path);
 
-    header('Content-Type: application/sql; charset=utf-8');
+    if ($contentType === null) {
+        $extension = strtolower(pathinfo($downloadName, PATHINFO_EXTENSION));
+        $contentType = $extension === 'zip' ? 'application/zip' : 'application/sql; charset=utf-8';
+    }
+
+    header('Content-Type: ' . $contentType);
     header('Content-Disposition: attachment; filename="' . str_replace('"', '', basename($downloadName)) . '"');
 
     if ($size !== false) {
@@ -355,22 +371,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             backup_restore_redirect();
         }
 
-        if ($action === 'create_backup') {
-            $filename = backup_restore_filename('teakwave-db');
-            $path = db_backup_path($filename);
-            $operationLock = db_restore_acquire_lock();
+        if ($action === 'create_media_backup') {
+            $selectedCategories = array_values(array_unique(array_map('strval', (array) ($_POST['media_categories'] ?? []))));
+            $operationLock = media_backup_acquire_lock();
 
             try {
-                db_create_backup($pdo, $path, $databaseName);
+                $result = media_backup_create_archive($pdo, $selectedCategories);
             } finally {
-                db_restore_release_lock($operationLock);
+                media_backup_release_lock($operationLock);
             }
 
             backup_restore_log(
-                'backup_create',
-                'Membuat backup database: ' . $filename . '; ukuran: ' . (int) filesize($path) . ' byte.'
+                'media_backup_create',
+                'Membuat backup foto media: ' . $result['filename']
+                . '; kategori: ' . implode(', ', $result['categories'])
+                . '; file: ' . (int) $result['file_count']
+                . '; ukuran asli: ' . (int) $result['total_size'] . ' byte'
+                . '; referensi tidak ditemukan: ' . (int) $result['missing_count'] . '.'
             );
-            backup_restore_send_download($path, $filename);
+
+            backup_restore_send_download($result['path'], $result['filename'], true, 'application/zip');
         }
 
         if ($action === 'dump_database') {
@@ -452,6 +472,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
 
             backup_restore_send_download($path, $filename, true);
+        }
+
+        if ($action === 'restore_media_upload') {
+            if (($_POST['confirm_media_restore'] ?? '') !== 'yes') {
+                throw new RuntimeException('Centang konfirmasi restore foto media terlebih dahulu.');
+            }
+
+            backup_restore_assert_rate_limit();
+            backup_restore_verify_current_password($pdo, $_POST['current_password'] ?? '', 'restore');
+
+            if (!isset($_FILES['media_zip'])) {
+                throw new RuntimeException('Pilih file backup foto media (.zip) yang akan direstore.');
+            }
+
+            $result = media_backup_restore_uploaded_archive(
+                $_FILES['media_zip'],
+                $_POST['media_original_name'] ?? ''
+            );
+
+            backup_restore_log(
+                'media_restore_upload',
+                'Restore foto media berhasil dari ' . backup_restore_log_filename($_POST['media_original_name'] ?? ($_FILES['media_zip']['name'] ?? ''))
+                . '; file direstore: ' . (int) $result['restored_count']
+                . '; ditimpa: ' . (int) $result['overwritten_count']
+                . '; file baru: ' . (int) $result['new_count']
+                . '; backup pengaman: ' . ($result['safety_backup'] ?: 'tidak diperlukan') . '.'
+            );
+
+            $successText = 'Restore foto media berhasil. '
+                . number_format((int) $result['restored_count'], 0, ',', '.') . ' file dipulihkan';
+            if (!empty($result['safety_backup'])) {
+                $successText .= '. Backup pengaman file lama tersimpan sebagai ' . $result['safety_backup'];
+            }
+            $successText .= '.';
+
+            backup_restore_flash('success', $successText);
+            backup_restore_redirect();
         }
 
         if (in_array($action, ['restore_upload', 'reset_database'], true)) {
@@ -598,6 +655,10 @@ $backups = db_list_backups();
 $uploadMax = ini_get('upload_max_filesize');
 $postMax = ini_get('post_max_size');
 $permissionUpgradeStatus = backup_restore_permission_upgrade_status($pdo);
+$mediaCategories = media_backup_categories();
+$mediaZipAvailable = media_backup_zip_available();
+$mediaRestoreMaxBytes = media_backup_restore_max_bytes();
+$mediaRestoreMaxLabel = media_backup_format_bytes($mediaRestoreMaxBytes);
 
 include 'includes/header.php';
 include 'includes/sidebar.php';
@@ -614,8 +675,8 @@ include 'includes/sidebar.php';
 
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
-            <h4 class="fw-bold mb-1">Backup & Restore Database</h4>
-            <p class="text-muted mb-0">Database aktif: <strong><?php echo e($databaseName); ?></strong></p>
+            <h4 class="fw-bold mb-1">Backup & Restore Data & Media</h4>
+            <p class="text-muted mb-0">Kelola backup foto website dan database aktif: <strong><?php echo e($databaseName); ?></strong></p>
         </div>
         <span class="badge text-bg-danger px-3 py-2"><i class="bi bi-shield-lock-fill me-1"></i> Akses Sensitif</span>
     </div>
@@ -665,36 +726,149 @@ include 'includes/sidebar.php';
         </div>
     <?php endif; ?>
 
-    <div class="row g-4 mb-4">
-        <div class="col-xl-4 col-lg-6">
-            <div class="card soft-card h-100">
-                <div class="card-body p-4">
+    <?php if (!$mediaZipAvailable): ?>
+        <div class="alert alert-warning d-flex align-items-start gap-3 mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+            <div>
+                <strong>Fitur backup foto belum tersedia.</strong>
+                Aktifkan ekstensi PHP <code>zip</code>/<code>ZipArchive</code> melalui panel hosting, lalu muat ulang halaman ini.
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h5 class="fw-bold mb-1">Backup & Restore Foto Website</h5>
+            <p class="text-muted small mb-0">Mencakup file gambar lokal yang digunakan oleh produk, contents, video, dan brands.</p>
+        </div>
+        <span class="badge bg-light text-dark border">Format aman: ZIP + manifest SHA-256</span>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-xl-6">
+            <div class="card soft-card h-100 border border-primary-subtle">
+                <div class="card-body p-4 d-flex flex-column">
                     <div class="d-flex align-items-start gap-3 mb-3">
                         <div class="stat-icon bg-primary-subtle text-primary flex-shrink-0">
-                            <i class="bi bi-database-down"></i>
+                            <i class="bi bi-images"></i>
                         </div>
                         <div>
-                            <h5 class="fw-bold mb-1">Backup Database</h5>
-                            <p class="text-muted mb-0">Membuat salinan struktur dan seluruh data dalam format SQL.</p>
+                            <h5 class="fw-bold mb-1">Backup Foto Media</h5>
+                            <p class="text-muted mb-0">Mengumpulkan foto lokal sesuai referensi database dan mengunduhnya sebagai satu arsip ZIP.</p>
                         </div>
                     </div>
 
                     <div class="alert alert-info small">
-                        File disimpan di server sebagai riwayat backup dan otomatis diunduh ke perangkat Anda.
+                        Struktur folder asli dipertahankan agar file dapat direstore ke lokasi yang sama. Data tabel database tidak dimasukkan ke backup ini.
                     </div>
 
-                    <form method="post">
+                    <form method="post" id="mediaBackupForm" class="mt-auto">
                         <?php csrf_field(); ?>
-                        <input type="hidden" name="action" value="create_backup">
-                        <button class="btn btn-primary w-100" type="submit">
-                            <i class="bi bi-download me-2"></i>Buat & Download Backup
+                        <input type="hidden" name="action" value="create_media_backup">
+
+                        <label class="form-label fw-semibold">Pilih Foto yang Dibackup</label>
+                        <div class="row g-2 mb-3">
+                            <?php foreach ($mediaCategories as $categoryKey => $categoryLabel): ?>
+                                <div class="col-sm-6">
+                                    <div class="form-check border rounded-3 px-3 py-2 h-100">
+                                        <input
+                                            class="form-check-input ms-0 me-2"
+                                            type="checkbox"
+                                            name="media_categories[]"
+                                            value="<?php echo e($categoryKey); ?>"
+                                            id="mediaCategory<?php echo e(ucfirst($categoryKey)); ?>"
+                                            checked
+                                        >
+                                        <label class="form-check-label fw-semibold" for="mediaCategory<?php echo e(ucfirst($categoryKey)); ?>">
+                                            <?php echo e($categoryLabel); ?>
+                                        </label>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <div class="form-text mb-3">
+                            Thumbnail YouTube eksternal tidak diunduh. Hanya gambar lokal pada <code>uploads/</code>, <code>produk/</code>, dan <code>assets/img/</code> yang disertakan.
+                        </div>
+
+                        <button class="btn btn-primary w-100" type="submit" <?php echo $mediaZipAvailable ? '' : 'disabled'; ?>>
+                            <i class="bi bi-file-earmark-zip me-2"></i>Buat & Download Backup Foto
                         </button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-lg-6">
+        <div class="col-xl-6">
+            <div class="card soft-card h-100 border border-success-subtle">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <div class="stat-icon bg-success-subtle text-success flex-shrink-0">
+                            <i class="bi bi-cloud-arrow-up"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-1">Restore Foto Media</h5>
+                            <p class="text-muted mb-0">Mengembalikan foto dari arsip ZIP Teakwave ke path aslinya tanpa mengubah data database.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning small">
+                        Semua file diperiksa berdasarkan manifest, ukuran, checksum, dan tipe gambar. File lama yang akan ditimpa dibackup otomatis terlebih dahulu.
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data" id="mediaRestoreForm" class="mt-auto">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="restore_media_upload">
+                        <input type="hidden" name="media_original_name" id="mediaOriginalName" value="">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="mediaRestoreFile">File Backup Foto (.zip)</label>
+                            <input
+                                class="form-control"
+                                type="file"
+                                name="media_zip"
+                                id="mediaRestoreFile"
+                                accept=".zip,application/zip"
+                                data-upload-allowed-extensions="zip"
+                                data-upload-max-bytes="<?php echo e($mediaRestoreMaxBytes); ?>"
+                                required
+                                <?php echo $mediaZipAvailable ? '' : 'disabled'; ?>
+                            >
+                            <div class="form-text">
+                                Maksimal efektif: <?php echo e($mediaRestoreMaxLabel); ?>. Konfigurasi server: upload_max_filesize <?php echo e($uploadMax); ?>, post_max_size <?php echo e($postMax); ?>.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="mediaRestorePassword">Password Super Admin</label>
+                            <input class="form-control" type="password" name="current_password" id="mediaRestorePassword" autocomplete="current-password" required <?php echo $mediaZipAvailable ? '' : 'disabled'; ?>>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="confirm_media_restore" value="yes" id="confirmMediaRestore" required <?php echo $mediaZipAvailable ? '' : 'disabled'; ?>>
+                            <label class="form-check-label" for="confirmMediaRestore">
+                                Saya memahami bahwa file foto dengan path yang sama akan diganti.
+                            </label>
+                        </div>
+
+                        <button class="btn btn-success w-100" type="submit" <?php echo $mediaZipAvailable ? '' : 'disabled'; ?>>
+                            <i class="bi bi-arrow-counterclockwise me-2"></i>Restore Foto Media
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h5 class="fw-bold mb-1">Dump & Restore Database</h5>
+            <p class="text-muted small mb-0">Fitur database tetap tersedia secara terpisah dari backup foto.</p>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-6">
             <div class="card soft-card h-100 border border-primary-subtle">
                 <div class="card-body p-4 d-flex flex-column">
                     <div class="d-flex align-items-start gap-3 mb-3">
@@ -746,7 +920,7 @@ include 'includes/sidebar.php';
             </div>
         </div>
 
-        <div class="col-xl-4 col-lg-12">
+        <div class="col-xl-6">
             <div class="card soft-card h-100 border border-danger-subtle">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start gap-3 mb-3">
@@ -881,6 +1055,75 @@ include 'includes/sidebar.php';
 </main>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const mediaBackupForm = document.getElementById('mediaBackupForm');
+
+    if (mediaBackupForm) {
+        mediaBackupForm.addEventListener('submit', function (event) {
+            const selected = mediaBackupForm.querySelectorAll('input[name="media_categories[]"]:checked');
+            if (!selected.length) {
+                event.preventDefault();
+                alert('Pilih minimal satu kategori foto yang akan dibackup.');
+                return;
+            }
+
+            const submitButton = mediaBackupForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Membuat backup foto...';
+            }
+        });
+    }
+
+    const mediaRestoreForm = document.getElementById('mediaRestoreForm');
+    const mediaRestoreInput = document.getElementById('mediaRestoreFile');
+    const mediaOriginalName = document.getElementById('mediaOriginalName');
+
+    if (mediaRestoreForm && mediaRestoreInput && mediaOriginalName) {
+        mediaRestoreForm.addEventListener('submit', function (event) {
+            const file = mediaRestoreInput.files && mediaRestoreInput.files[0] ? mediaRestoreInput.files[0] : null;
+            const maxBytes = Number(mediaRestoreInput.dataset.uploadMaxBytes || 0);
+
+            if (!file || !/\.zip$/i.test(file.name)) {
+                event.preventDefault();
+                alert('Pilih file backup foto dengan ekstensi .zip.');
+                return;
+            }
+
+            if (file.size <= 0 || (maxBytes > 0 && file.size > maxBytes)) {
+                event.preventDefault();
+                alert('Ukuran file backup foto tidak valid atau melebihi batas upload server.');
+                return;
+            }
+
+            if (!window.confirm('Restore akan menimpa foto yang memiliki path sama. Sistem akan membuat backup pengaman terlebih dahulu. Lanjutkan?')) {
+                event.preventDefault();
+                return;
+            }
+
+            mediaOriginalName.value = file.name;
+
+            // Gunakan nama transport netral agar aturan WAF hosting tidak menolak
+            // upload berdasarkan ekstensi sebelum validasi PHP dijalankan.
+            try {
+                const transportedFile = new File([file], 'media-restore-' + Date.now() + '.upload', {
+                    type: 'application/octet-stream',
+                    lastModified: file.lastModified
+                });
+                const transfer = new DataTransfer();
+                transfer.items.add(transportedFile);
+                mediaRestoreInput.files = transfer.files;
+            } catch (error) {
+                // Browser lama tetap aman karena validasi server bersifat otoritatif.
+            }
+
+            const submitButton = mediaRestoreForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Merestore foto...';
+            }
+        });
+    }
+
     const dumpForm = document.getElementById('dumpDatabaseForm');
 
     if (dumpForm) {

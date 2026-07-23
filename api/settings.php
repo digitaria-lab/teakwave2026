@@ -3,8 +3,6 @@ header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 
-require_once __DIR__ . '/../utakatik/config/database.php';
-
 $defaults = [
     'tokopedia' => 'https://www.tokopedia.com/teakwave',
     'shopee' => 'https://shopee.co.id/teakwave',
@@ -14,6 +12,7 @@ $defaults = [
 ];
 
 try {
+    require_once __DIR__ . '/../utakatik/config/database.php';
     $keys = [
         'tokopedia_url',
         'shopee_url',

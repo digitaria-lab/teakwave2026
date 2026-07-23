@@ -1,14 +1,16 @@
 <?php
-$pageTitle = 'Kontak - Teakwave';
+$pageTitle = 'Kontak Teakwave | Konsultasi dan Penawaran Produk Jaringan';
+$metaDescription = 'Hubungi tim Teakwave untuk konsultasi perangkat jaringan, informasi stok, kebutuhan proyek, dan penawaran produk melalui email, telepon, atau WhatsApp.';
+$canonicalPath = 'kontak';
 $activePage = 'contact';
 require __DIR__ . '/includes/header.php';
 ?>
-<main class="contact-page" id="kontak-page">
+<main class="contact-page" id="main-content">
     <section class="contact-section">
         <div class="container contact-container">
-            <div class="contact-hero-card reveal">
+            <div class="contact-hero-card">
                 <div class="contact-hero-visual" data-banner-placement="contact"
-                    style="background: url(./assets/img/banner-kontak.png); background-size: cover; background-position: center center;">
+                    style="background-image: url('<?= teakwave_escape(teakwave_asset_url('assets/img/banner-kontak.webp')); ?>'); background-size: cover; background-position: center center;">
                 </div>
                 <div class="contact-hero-title">
                     <h1>Kontak <em>Teakwave</em></h1>
@@ -59,11 +61,10 @@ require __DIR__ . '/includes/header.php';
                 </div>
                 <div aria-label="Link pembelian produk" class="purchase-actions">
                     <a aria-label="Tokopedia" class="purchase-action tokopedia" data-external-url="tokopedia" href="https://www.tokopedia.com/teakwave" rel="noopener"
-                        target="_blank"><img src="./assets/img/icon-tokopedia.png" /></a>
-                    <a aria-label="Shopee" class="purchase-action shopee" data-external-url="shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img
-                            src="./assets/img/icon-shopee.png" /></a>
+                        target="_blank"><img src="assets/img/icon-tokopedia.png" alt="Tokopedia" width="320" height="320" loading="lazy" decoding="async"></a>
+                    <a aria-label="Shopee" class="purchase-action shopee" data-external-url="shopee" href="https://shopee.co.id/teakwave" rel="noopener" target="_blank"><img src="assets/img/icon-shopee.png" alt="Shopee" width="320" height="320" loading="lazy" decoding="async"></a>
                     <a aria-label="WhatsApp" class="purchase-action whatsapp" data-external-url="whatsapp" href="https://wa.me/6289527932474"
-                        rel="noopener" target="_blank"><img src="./assets/img/icon-whatsapp.png" /></a>
+                        rel="noopener" target="_blank"><img src="assets/img/icon-whatsapp.png" alt="WhatsApp" width="320" height="320" loading="lazy" decoding="async"></a>
                 </div>
             </div>
             <div aria-hidden="true" class="contact-bottom-space"></div>

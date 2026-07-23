@@ -2,7 +2,7 @@
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
-require_once __DIR__ . '/../utakatik/config/database.php';
+require_once __DIR__ . '/../includes/config.php';
 
 
 function json_response($payload, $status = 200) {
@@ -12,41 +12,7 @@ function json_response($payload, $status = 200) {
 }
 
 function asset_url($path) {
-    $path = trim((string) $path);
-
-    if ($path === '') return '';
-
-    if (preg_match('#^https?://#i', $path)) {
-        return $path;
-    }
-
-    $path = ltrim(str_replace('\\', '/', $path), '/');
-
-    if (str_starts_with($path, '../uploads/')) {
-        return 'uploads/' . substr($path, strlen('../uploads/'));
-    }
-
-    if (str_starts_with($path, '../assets/')) {
-        return 'assets/' . substr($path, strlen('../assets/'));
-    }
-
-    if (str_starts_with($path, '../produk/')) {
-        return 'produk/' . substr($path, strlen('../produk/'));
-    }
-
-    if (str_starts_with($path, 'uploads/')) {
-        return $path;
-    }
-
-    if (str_starts_with($path, 'assets/uploads/')) {
-        return 'uploads/' . basename($path);
-    }
-
-    if (str_starts_with($path, 'utakatik/assets/uploads/')) {
-        return 'uploads/' . basename($path);
-    }
-
-    return $path;
+    return teakwave_asset_url($path);
 }
 
 function normalize_html_asset_urls($html) {
@@ -73,6 +39,7 @@ function normalize_html_asset_urls($html) {
 
 
 try {
+    require_once __DIR__ . '/../utakatik/config/database.php';
     $placement = trim($_GET['placement'] ?? 'homepage');
 
     $placementAliases = [
@@ -127,8 +94,7 @@ try {
 } catch (Throwable $e) {
     json_response([
         'success' => false,
-        'message' => 'Gagal mengambil data banner.',
-        'error' => $e->getMessage()
+        'message' => 'Gagal mengambil data banner.'
     ], 500);
 }
 ?>

@@ -3,9 +3,8 @@ if (!function_exists('teakwave_asset_url')) {
     require_once __DIR__ . '/config.php';
 }
 ?>
-<!-- Bootstrap JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= htmlspecialchars(teakwave_asset_url('assets/js/script.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="<?= teakwave_escape(teakwave_asset_url('assets/js/script.min.js')); ?>" defer></script>
 <script>
 (function () {
     'use strict';
@@ -14,29 +13,28 @@ if (!function_exists('teakwave_asset_url')) {
         if (sent || document.visibilityState === 'prerender') return;
         sent = true;
         var payload = JSON.stringify({
-            page: window.location.pathname + window.location.search,
+            page: location.pathname + location.search,
             title: document.title || '',
             referrer: document.referrer || ''
         });
-        var endpoint = 'analytics-collect.php';
         if (navigator.sendBeacon) {
             var blob = new Blob([payload], {type: 'application/json'});
-            if (navigator.sendBeacon(endpoint, blob)) return;
+            if (navigator.sendBeacon('analytics-collect.php', blob)) return;
         }
-        fetch(endpoint, {
-            method: 'POST',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            keepalive: true,
-            headers: {'Content-Type': 'application/json'},
-            body: payload
+        fetch('analytics-collect.php', {
+            method: 'POST', credentials: 'same-origin', cache: 'no-store', keepalive: true,
+            headers: {'Content-Type': 'application/json'}, body: payload
         }).catch(function () {});
     }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', collectPageView, {once: true});
-    } else {
-        collectPageView();
+    function scheduleCollect() {
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(collectPageView, {timeout: 2500});
+        } else {
+            setTimeout(collectPageView, 1200);
+        }
     }
+    if (document.readyState === 'complete') scheduleCollect();
+    else window.addEventListener('load', scheduleCollect, {once: true});
 })();
 </script>
 </body>

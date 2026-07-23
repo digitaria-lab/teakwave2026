@@ -1,7 +1,8 @@
 <?php
-require_once __DIR__ . '/utakatik/config/database.php';
-require_once __DIR__ . '/includes/video-public.php';
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/video-public.php';
+$pdo = null;
+try { require_once __DIR__ . '/utakatik/config/database.php'; } catch (Throwable $ignored) { $pdo = null; }
 
 $videoId = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 0;
 $requestedSlug = trim((string) ($_GET['slug'] ?? ''));
@@ -10,9 +11,9 @@ if ($requestedSlug !== '' && !preg_match('/^[a-z0-9-]{1,120}$/', $requestedSlug)
 }
 $video = null;
 $relatedVideos = [];
-$settings = public_video_settings($pdo);
+$settings = $pdo instanceof PDO ? public_video_settings($pdo) : ['timezone' => 'Asia/Jakarta', 'date_format' => 'd M Y', 'time_format' => 'H:i'];
 
-if ($videoId > 0) {
+if ($videoId > 0 && $pdo instanceof PDO) {
     try {
         $stmt = $pdo->prepare('SELECT id, title, url, youtube_id, thumbnail, tag, published_at FROM videos WHERE id = ? LIMIT 1');
         $stmt->execute([$videoId]);
@@ -65,7 +66,7 @@ $extraHead = ($extraHead ?? '') . PHP_EOL . '<link href="' . public_video_escape
 $activePage = 'video';
 require __DIR__ . '/includes/header.php';
 ?>
-<main class="video-page video-detail-page">
+<main class="video-page video-detail-page" id="main-content">
     <section class="video-detail-section">
         <div class="container">
             <?php if (!$video || $validYoutubeId === ''): ?>
@@ -73,7 +74,7 @@ require __DIR__ . '/includes/header.php';
                     <i class="bi bi-camera-video-off"></i>
                     <h1>Video tidak ditemukan</h1>
                     <p>Video mungkin telah dihapus atau alamat yang dibuka tidak valid.</p>
-                    <a href="video.php" class="video-primary-btn"><i class="bi bi-arrow-left"></i> Kembali ke daftar video</a>
+                    <a href="video" class="video-primary-btn"><i class="bi bi-arrow-left"></i> Kembali ke daftar video</a>
                 </div>
             <?php else: ?>
                 <?php
@@ -82,9 +83,9 @@ require __DIR__ . '/includes/header.php';
                 $embedUrl = 'https://www.youtube-nocookie.com/embed/' . rawurlencode($validYoutubeId) . '?rel=0';
                 ?>
                 <nav class="video-breadcrumb reveal" aria-label="Breadcrumb">
-                    <a href="index.php">Home</a>
+                    <a href="<?= teakwave_escape(teakwave_absolute_url()); ?>">Home</a>
                     <i class="bi bi-chevron-right"></i>
-                    <a href="video.php">Video</a>
+                    <a href="video">Video</a>
                     <i class="bi bi-chevron-right"></i>
                     <span aria-current="page"><?= public_video_escape($video['title']); ?></span>
                 </nav>
@@ -126,7 +127,7 @@ require __DIR__ . '/includes/header.php';
                                 <span>Video lainnya</span>
                                 <h2 id="relatedVideoTitle">Lanjutkan menonton</h2>
                             </div>
-                            <a href="video.php">Lihat semua <i class="bi bi-arrow-right"></i></a>
+                            <a href="video">Lihat semua <i class="bi bi-arrow-right"></i></a>
                         </div>
                         <div class="related-video-grid">
                             <?php foreach ($relatedVideos as $related): ?>

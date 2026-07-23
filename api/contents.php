@@ -2,8 +2,6 @@
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 
-require_once __DIR__ . '/../utakatik/config/database.php';
-
 
 function json_response($payload, $status = 200) {
     http_response_code($status);
@@ -73,6 +71,7 @@ function normalize_html_asset_urls($html) {
 
 
 try {
+    require_once __DIR__ . '/../utakatik/config/database.php';
     $slug = trim($_GET['slug'] ?? '');
     $type = trim($_GET['type'] ?? '');
 
@@ -151,8 +150,7 @@ try {
 } catch (Throwable $e) {
     json_response([
         'success' => false,
-        'message' => 'Gagal mengambil data content.',
-        'error' => $e->getMessage()
+        'message' => 'Gagal mengambil data content.'
     ], 500);
 }
 ?>

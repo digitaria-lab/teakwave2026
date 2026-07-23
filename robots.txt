@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /utakatik/
+Disallow: /api/
+Disallow: /analytics-collect.php
+
+Sitemap: https://teakwave.com/sitemap.xml

@@ -1,7 +1,8 @@
 <?php
-require_once __DIR__ . '/utakatik/config/database.php';
-require_once __DIR__ . '/includes/video-public.php';
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/video-public.php';
+$pdo = null;
+try { require_once __DIR__ . '/utakatik/config/database.php'; } catch (Throwable $ignored) { $pdo = null; }
 
 $limit = 10;
 $page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: 1;
@@ -11,10 +12,11 @@ $activePage = 'video';
 $totalItems = 0;
 $totalPages = 1;
 $videos = [];
-$loadError = false;
-$settings = public_video_settings($pdo);
+$loadError = !($pdo instanceof PDO);
+$settings = $pdo instanceof PDO ? public_video_settings($pdo) : ['timezone' => 'Asia/Jakarta', 'date_format' => 'd M Y', 'time_format' => 'H:i'];
 $extraHead = '<link href="' . public_video_escape(teakwave_asset_url('assets/css/video.css')) . '" rel="stylesheet">';
 
+if (!$loadError) {
 try {
     $whereSql = '';
     if ($search !== '') {
@@ -48,10 +50,13 @@ try {
 } catch (Throwable $e) {
     $loadError = true;
 }
+}
 
+$metaDescription = 'Galeri video Teakwave berisi informasi produk, tutorial, dan pembaruan perangkat jaringan.';
+$canonicalPath = 'video';
 require __DIR__ . '/includes/header.php';
 ?>
-<main class="video-page" id="video-page">
+<main class="video-page" id="main-content">
     <section class="video-hero-section">
         <div class="container">
             <div class="video-hero-card reveal">
@@ -79,7 +84,7 @@ require __DIR__ . '/includes/header.php';
                 </div>
 
                 <div class="video-search-panel">
-                    <form class="video-search-form" method="get" action="video.php" role="search">
+                    <form class="video-search-form" method="get" action="video" role="search">
                         <label class="visually-hidden" for="video-search-input">Cari video berdasarkan judul atau tag</label>
                         <div class="video-search-field">
                             <i class="bi bi-search" aria-hidden="true"></i>
@@ -98,7 +103,7 @@ require __DIR__ . '/includes/header.php';
                             <span>Cari</span>
                         </button>
                         <?php if ($search !== ''): ?>
-                            <a class="video-search-reset" href="video.php" aria-label="Hapus pencarian">
+                            <a class="video-search-reset" href="video" aria-label="Hapus pencarian">
                                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                                 <span>Reset</span>
                             </a>
@@ -122,7 +127,7 @@ require __DIR__ . '/includes/header.php';
                     <?php if ($search !== ''): ?>
                         <h2>Video tidak ditemukan</h2>
                         <p>Tidak ada video yang cocok dengan pencarian “<?= public_video_escape($search); ?>”. Coba gunakan kata kunci lain.</p>
-                        <a class="video-primary-btn" href="video.php"><i class="bi bi-arrow-counterclockwise"></i> Tampilkan semua video</a>
+                        <a class="video-primary-btn" href="video"><i class="bi bi-arrow-counterclockwise"></i> Tampilkan semua video</a>
                     <?php else: ?>
                         <h2>Belum ada video</h2>
                         <p>Video yang ditambahkan melalui dashboard akan muncul di halaman ini.</p>

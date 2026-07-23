@@ -1,15 +1,17 @@
 <?php
-$pageTitle = 'Profil Teakwave - Wireless & Network Specialist';
+$pageTitle = 'Tentang Teakwave | Distributor dan Spesialis Jaringan';
+$metaDescription = 'Kenali Teakwave, distributor perangkat jaringan dan wireless sejak 2014 yang menyediakan produk resmi, konsultasi teknis, dan dukungan troubleshooting.';
+$canonicalPath = 'tentang-kami';
 $activePage = 'profile';
 require __DIR__ . '/includes/header.php';
 ?>
-<main class="profile-page" id="profil-page">
+<main class="profile-page" id="main-content">
     <!-- Profile Hero -->
     <section class="profile-section">
         <div class="container profile-container">
-            <div class="profile-hero-card reveal">
+            <div class="profile-hero-card">
                 <div class="profile-hero-visual" data-banner-placement="profile"
-                    style="border-radius: var(--radius-xl);background: url(./assets/img/banner-profil.png); background-size: cover; background-position: center center;">
+                    style="border-radius: var(--radius-xl); background-image: url('<?= teakwave_escape(teakwave_asset_url('assets/img/banner-profil.webp')); ?>'); background-size: cover; background-position: center center;">
                 </div>
                 <div class="profile-hero-title">
                     <h1>Tentang <em>Teakwave</em></h1>
@@ -30,10 +32,10 @@ require __DIR__ . '/includes/header.php';
             <div class="authorized-strip reveal slide-right" data-content-slug="profile-authorized">
                 <div class="auth-label">Authorized Distributor of:</div>
                 <div aria-label="Brand distributor resmi" class="auth-brand-row">
-                    <span class="auth-logo voltech"><img src="./assets/img/logo-voltech.png" /></span>
-                    <span class="auth-logo voltech"><img src="./assets/img/logo-vsol.png" /></span>
-                    <span class="auth-logo voltech"><img src="./assets/img/logo-ubiquiti.png" /></span>
-                    <span class="auth-logo voltech"><img src="./assets/img/logo-mikrotik.png" /></span>
+                    <span class="auth-logo voltech"><img src="assets/img/logo-voltech.png" alt="VOL.TECH" width="640" height="200" loading="lazy" decoding="async"></span>
+                    <span class="auth-logo voltech"><img src="assets/img/logo-vsol.png" alt="V-SOL" width="640" height="200" loading="lazy" decoding="async"></span>
+                    <span class="auth-logo voltech"><img src="assets/img/logo-ubiquiti.png" alt="Ubiquiti" width="640" height="200" loading="lazy" decoding="async"></span>
+                    <span class="auth-logo voltech"><img src="assets/img/logo-mikrotik.png" alt="MikroTik" width="640" height="200" loading="lazy" decoding="async"></span>
                 </div>
             </div>
         </div>

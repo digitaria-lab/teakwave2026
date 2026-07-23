@@ -54,7 +54,7 @@ if (!function_exists('public_video_thumbnail_url')) {
         $youtubeId = public_video_youtube_id($video['youtube_id'] ?? '');
         return $youtubeId !== ''
             ? 'https://i.ytimg.com/vi/' . rawurlencode($youtubeId) . '/hqdefault.jpg'
-            : 'assets/img/banner-profil.png';
+            : 'assets/img/banner-profil.webp';
     }
 }
 
@@ -189,7 +189,7 @@ if (!function_exists('public_video_page_url')) {
             $query['q'] = $search;
         }
 
-        return 'video.php?' . http_build_query($query);
+        return 'video' . ($query ? '?' . http_build_query($query) : '');
     }
 }
 
