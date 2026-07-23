@@ -5,6 +5,7 @@ $pageTitle = $pageTitle ?? $siteName;
 $activePage = $activePage ?? '';
 $extraHead = $extraHead ?? '';
 $metaDescription = trim((string) ($metaDescription ?? $defaultMetaDescription));
+$metaKeywords = trim((string) ($metaKeywords ?? $defaultMetaKeywords));
 $robots = trim((string) ($robots ?? 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1'));
 $canonicalPath = $canonicalPath ?? null;
 $canonicalUrl = $canonicalUrl ?? ($canonicalPath !== null ? teakwave_absolute_url($canonicalPath) : '');
@@ -13,16 +14,8 @@ $metaType = $metaType ?? 'website';
 $preloadImage = $preloadImage ?? '';
 $structuredData = $structuredData ?? null;
 
-// Catat view tanpa membuat halaman publik gagal ketika database belum siap.
-try {
-    require_once __DIR__ . '/../utakatik/config/database.php';
-    require_once __DIR__ . '/page-view-tracker.php';
-    if (isset($pdo) && $pdo instanceof PDO) {
-        teakwave_track_page_view($pdo, (string) $pageTitle);
-    }
-} catch (Throwable $ignored) {
-    // Statistik bersifat non-kritis.
-}
+// Statistik halaman dikirim setelah window.load melalui analytics-collect.php.
+// Jangan melakukan INSERT database sinkron di jalur render karena memperlambat TTFB.
 
 $homeActive = ($activePage === 'home') ? ' active' : '';
 $profileActive = ($activePage === 'profile') ? ' active' : '';
@@ -33,6 +26,16 @@ $hasDescriptionInExtra = stripos($extraHead, 'name="description"') !== false || 
 $hasCanonicalInExtra = stripos($extraHead, 'rel="canonical"') !== false || stripos($extraHead, "rel='canonical'") !== false;
 $hasRobotsInExtra = stripos($extraHead, 'name="robots"') !== false || stripos($extraHead, "name='robots'") !== false;
 $hasOgInExtra = stripos($extraHead, 'property="og:') !== false || stripos($extraHead, "property='og:") !== false;
+
+$faviconUrl = teakwave_asset_url($siteFavicon, 'assets/img/logo-teakwave.png');
+$faviconPathForType = strtolower((string) parse_url($faviconUrl, PHP_URL_PATH));
+$faviconType = match (pathinfo($faviconPathForType, PATHINFO_EXTENSION)) {
+    'ico' => 'image/x-icon',
+    'svg' => 'image/svg+xml',
+    'webp' => 'image/webp',
+    'jpg', 'jpeg' => 'image/jpeg',
+    default => 'image/png',
+};
 ?>
 <!doctype html>
 <html lang="id">
@@ -44,12 +47,13 @@ $hasOgInExtra = stripos($extraHead, 'property="og:') !== false || stripos($extra
     <meta name="teakwave-base-url" content="<?= teakwave_escape($siteUrl); ?>">
     <title><?= teakwave_escape($pageTitle); ?></title>
     <?php if (!$hasDescriptionInExtra): ?><meta name="description" content="<?= teakwave_escape($metaDescription); ?>"><?php endif; ?>
+    <?php if ($metaKeywords !== ''): ?><meta name="keywords" content="<?= teakwave_escape($metaKeywords); ?>"><?php endif; ?>
     <?php if (!$hasRobotsInExtra): ?><meta name="robots" content="<?= teakwave_escape($robots); ?>"><?php endif; ?>
     <?php if ($canonicalUrl !== '' && !$hasCanonicalInExtra): ?><link rel="canonical" href="<?= teakwave_escape($canonicalUrl); ?>"><?php endif; ?>
     <?php if (!$hasOgInExtra): ?>
     <meta property="og:locale" content="id_ID">
     <meta property="og:type" content="<?= teakwave_escape($metaType); ?>">
-    <meta property="og:site_name" content="Teakwave">
+    <meta property="og:site_name" content="<?= teakwave_escape($siteName); ?>">
     <meta property="og:title" content="<?= teakwave_escape($pageTitle); ?>">
     <meta property="og:description" content="<?= teakwave_escape($metaDescription); ?>">
     <?php if ($canonicalUrl !== ''): ?><meta property="og:url" content="<?= teakwave_escape($canonicalUrl); ?>"><?php endif; ?>
@@ -59,13 +63,16 @@ $hasOgInExtra = stripos($extraHead, 'property="og:') !== false || stripos($extra
     <meta name="twitter:description" content="<?= teakwave_escape($metaDescription); ?>">
     <meta name="twitter:image" content="<?= teakwave_escape($metaImage); ?>">
     <?php endif; ?>
-    <link rel="icon" href="<?= teakwave_escape(teakwave_asset_url('uploads/favicon_6a0621935cf2e5.50652961.png')); ?>" type="image/png">
+    <link rel="icon" href="<?= teakwave_escape($faviconUrl); ?>" type="<?= teakwave_escape($faviconType); ?>">
+    <link rel="shortcut icon" href="<?= teakwave_escape($faviconUrl); ?>" type="<?= teakwave_escape($faviconType); ?>">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
     <?php if ($preloadImage !== ''): ?><link rel="preload" as="image" href="<?= teakwave_escape(teakwave_asset_url($preloadImage)); ?>" fetchpriority="high"><?php endif; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="<?= teakwave_escape(teakwave_asset_url('assets/css/style.css')); ?>" rel="stylesheet">
+    <link href="<?= teakwave_escape(teakwave_asset_url('assets/css/style.min.css')); ?>" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+        rel="stylesheet" media="print" onload="this.media='all'" fetchpriority="low">
+    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"></noscript>
     <?= $extraHead; ?>
     <?php if ($structuredData !== null): ?>
     <script type="application/ld+json"><?= teakwave_json($structuredData); ?></script>

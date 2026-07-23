@@ -3,11 +3,40 @@ require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/public-products.php';
 
 $bestSellerProducts = [];
+$homepageBanners = [];
+
 try {
     require_once __DIR__ . '/utakatik/config/database.php';
     $bestSellerProducts = teakwave_public_products($pdo, 10, true);
+
+    // Banner homepage dirender langsung oleh PHP agar gambar LCP sudah tersedia
+    // pada HTML awal dan tidak diganti lagi setelah request API JavaScript.
+    $bannerStmt = $pdo->query("
+        SELECT id, title, image, link_url
+        FROM banners
+        WHERE status = 'active'
+          AND placement IN ('homepage', 'header_home', 'home')
+          AND (start_date IS NULL OR start_date = '0000-00-00' OR start_date <= CURDATE())
+          AND (end_date IS NULL OR end_date = '0000-00-00' OR end_date >= CURDATE())
+        ORDER BY id DESC
+        LIMIT 3
+    ");
+
+    foreach ($bannerStmt->fetchAll() as $bannerRow) {
+        $bannerPath = teakwave_normalize_asset_path($bannerRow['image'] ?? '');
+        if ($bannerPath === '') {
+            continue;
+        }
+
+        $homepageBanners[] = [
+            'title' => trim((string) ($bannerRow['title'] ?? '')),
+            'image' => $bannerPath,
+            'link_url' => trim((string) ($bannerRow['link_url'] ?? '')),
+        ];
+    }
 } catch (Throwable $ignored) {
     $bestSellerProducts = [];
+    $homepageBanners = [];
 }
 
 if (!$bestSellerProducts) {
@@ -28,18 +57,67 @@ if (!$bestSellerProducts) {
     }
 }
 
-$pageTitle = 'Teakwave | Distributor Perangkat Jaringan Nirkabel Indonesia';
-$metaDescription = 'Distributor resmi perangkat jaringan Ubiquiti, MikroTik, V-SOL, dan VOL.TECH. Temukan access point, router, switch, fiber optic, serta konsultasi jaringan dari Teakwave.';
+if (!$homepageBanners) {
+    $homepageBanners = [
+        ['title' => 'Solusi perangkat jaringan Teakwave', 'image' => 'assets/img/banner-home-1.webp', 'link_url' => ''],
+        ['title' => 'Produk jaringan nirkabel Teakwave', 'image' => 'assets/img/banner-home-2.webp', 'link_url' => ''],
+        ['title' => 'Distributor perangkat jaringan terpercaya', 'image' => 'assets/img/banner-home-3.webp', 'link_url' => ''],
+    ];
+}
+
+// Siapkan varian AVIF dan gambar mobile hanya bila filenya tersedia.
+foreach ($homepageBanners as $bannerIndex => &$banner) {
+    $path = teakwave_normalize_asset_path($banner['image'] ?? '');
+    $banner['image'] = $path;
+    $banner['url'] = teakwave_asset_url($path, 'assets/img/banner-home-' . (($bannerIndex % 3) + 1) . '.webp');
+    $banner['mobile_url'] = '';
+    $banner['avif_url'] = '';
+    $banner['mobile_avif_url'] = '';
+
+    if ($path !== '' && !preg_match('#^https?://#i', $path)) {
+        $baseWithoutExtension = preg_replace('/\.(?:png|jpe?g|webp|avif)$/i', '', $path);
+        $mobilePath = $baseWithoutExtension . '-mobile.webp';
+        $avifPath = $baseWithoutExtension . '.avif';
+        $mobileAvifPath = $baseWithoutExtension . '-mobile.avif';
+
+        if (is_file(__DIR__ . '/' . $mobilePath)) {
+            $banner['mobile_url'] = teakwave_asset_url($mobilePath);
+        }
+        if (is_file(__DIR__ . '/' . $avifPath)) {
+            $banner['avif_url'] = teakwave_asset_url($avifPath);
+        }
+        if (is_file(__DIR__ . '/' . $mobileAvifPath)) {
+            $banner['mobile_avif_url'] = teakwave_asset_url($mobileAvifPath);
+        }
+    }
+}
+unset($banner);
+
+$pageTitle = $defaultMetaTitle;
+$metaDescription = $defaultMetaDescription;
+$metaKeywords = $defaultMetaKeywords;
 $canonicalPath = '';
 $activePage = 'home';
-$preloadImage = 'assets/img/banner-home-1.webp';
+$preloadImage = '';
+$firstBanner = $homepageBanners[0] ?? [];
+$desktopPreload = (string) ($firstBanner['avif_url'] ?? $firstBanner['url'] ?? '');
+$mobilePreload = (string) ($firstBanner['mobile_avif_url'] ?? $firstBanner['mobile_url'] ?? $desktopPreload);
+$desktopPreloadType = !empty($firstBanner['avif_url']) ? 'image/avif' : 'image/webp';
+$mobilePreloadType = !empty($firstBanner['mobile_avif_url']) ? 'image/avif' : (!empty($firstBanner['mobile_url']) ? 'image/webp' : $desktopPreloadType);
+$extraHead = '';
+if ($mobilePreload !== '') {
+    $extraHead .= '<link rel="preload" as="image" href="' . teakwave_escape($mobilePreload) . '" type="' . $mobilePreloadType . '" media="(max-width: 767.98px)" fetchpriority="high">' . "\n";
+}
+if ($desktopPreload !== '') {
+    $extraHead .= '<link rel="preload" as="image" href="' . teakwave_escape($desktopPreload) . '" type="' . $desktopPreloadType . '" media="(min-width: 768px)" fetchpriority="high">' . "\n";
+}
 $structuredData = [
     '@context' => 'https://schema.org',
     '@graph' => [
         [
             '@type' => 'Organization',
             '@id' => teakwave_absolute_url('#organization'),
-            'name' => 'Teakwave',
+            'name' => $siteName,
             'url' => teakwave_absolute_url(''),
             'logo' => teakwave_absolute_url('assets/img/logo-teakwave.png'),
             'email' => 'sales@teakwave.com',
@@ -57,7 +135,7 @@ $structuredData = [
             '@type' => 'WebSite',
             '@id' => teakwave_absolute_url('#website'),
             'url' => teakwave_absolute_url(''),
-            'name' => 'Teakwave',
+            'name' => $siteName,
             'publisher' => ['@id' => teakwave_absolute_url('#organization')],
             'inLanguage' => 'id-ID'
         ]
@@ -69,31 +147,35 @@ require __DIR__ . '/includes/header.php';
     <h1 class="visually-hidden">Distributor Perangkat Jaringan Nirkabel dan Fiber Optic Teakwave</h1>
     <header class="hero-wrap" id="home">
         <div class="container">
-            <div class="carousel slide hero-card" data-banner-placement="homepage" data-bs-ride="carousel" id="heroCarousel">
+            <div class="carousel slide hero-card" data-server-rendered="true" data-bs-ride="carousel" id="heroCarousel">
                 <div class="carousel-indicators">
-                    <button aria-current="true" aria-label="Slide 1" class="active" data-bs-slide-to="0" data-bs-target="#heroCarousel" type="button"></button>
-                    <button aria-label="Slide 2" data-bs-slide-to="1" data-bs-target="#heroCarousel" type="button"></button>
-                    <button aria-label="Slide 3" data-bs-slide-to="2" data-bs-target="#heroCarousel" type="button"></button>
+                    <?php foreach ($homepageBanners as $bannerIndex => $banner): ?>
+                    <button aria-current="<?= $bannerIndex === 0 ? 'true' : 'false'; ?>"
+                        aria-label="Slide <?= $bannerIndex + 1; ?>"
+                        class="<?= $bannerIndex === 0 ? 'active' : ''; ?>"
+                        data-bs-slide-to="<?= $bannerIndex; ?>" data-bs-target="#heroCarousel" type="button"></button>
+                    <?php endforeach; ?>
                 </div>
                 <div class="carousel-inner">
-                    <div class="carousel-item active">
+                    <?php foreach ($homepageBanners as $bannerIndex => $banner):
+                        $bannerTitle = $banner['title'] !== '' ? $banner['title'] : 'Banner Teakwave ' . ($bannerIndex + 1);
+                        $bannerLink = trim((string) ($banner['link_url'] ?? ''));
+                    ?>
+                    <div class="carousel-item<?= $bannerIndex === 0 ? ' active' : ''; ?>">
+                        <?php if ($bannerLink !== ''): ?><a href="<?= teakwave_escape($bannerLink); ?>" class="hero-banner-link" rel="noopener"><?php endif; ?>
                         <div class="hero-slide hero-image-slide text-center">
-                            <img alt="Solusi perangkat jaringan Teakwave" class="hero-slide-img" decoding="async" fetchpriority="high"
-                                src="<?= teakwave_escape(teakwave_asset_url('assets/img/banner-home-1.webp')); ?>" width="1672" height="941">
+                            <picture>
+                                <?php if (!empty($banner['mobile_avif_url'])): ?><source media="(max-width: 767.98px)" srcset="<?= teakwave_escape($banner['mobile_avif_url']); ?>" type="image/avif"><?php endif; ?>
+                                <?php if (!empty($banner['avif_url'])): ?><source media="(min-width: 768px)" srcset="<?= teakwave_escape($banner['avif_url']); ?>" type="image/avif"><?php endif; ?>
+                                <?php if (!empty($banner['mobile_url'])): ?><source media="(max-width: 767.98px)" srcset="<?= teakwave_escape($banner['mobile_url']); ?>" type="image/webp"><?php endif; ?>
+                                <img alt="<?= teakwave_escape($bannerTitle); ?>" class="hero-slide-img"
+                                    decoding="async" <?= $bannerIndex === 0 ? 'fetchpriority="high" loading="eager"' : 'fetchpriority="low" loading="lazy"'; ?>
+                                    src="<?= teakwave_escape($banner['url']); ?>" width="1672" height="941">
+                            </picture>
                         </div>
+                        <?php if ($bannerLink !== ''): ?></a><?php endif; ?>
                     </div>
-                    <div class="carousel-item">
-                        <div class="hero-slide hero-image-slide text-center">
-                            <img alt="Produk jaringan nirkabel Teakwave" class="hero-slide-img" decoding="async" loading="lazy"
-                                src="<?= teakwave_escape(teakwave_asset_url('assets/img/banner-home-2.webp')); ?>" width="1672" height="941">
-                        </div>
-                    </div>
-                    <div class="carousel-item">
-                        <div class="hero-slide hero-image-slide text-center">
-                            <img alt="Distributor perangkat jaringan terpercaya" class="hero-slide-img" decoding="async" loading="lazy"
-                                src="<?= teakwave_escape(teakwave_asset_url('assets/img/banner-home-3.webp')); ?>" width="1672" height="941">
-                        </div>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
                 <button aria-label="Slide sebelumnya" class="carousel-control-prev" data-bs-slide="prev" data-bs-target="#heroCarousel" type="button"><span aria-hidden="true" class="carousel-control-prev-icon"></span></button>
                 <button aria-label="Slide berikutnya" class="carousel-control-next" data-bs-slide="next" data-bs-target="#heroCarousel" type="button"><span aria-hidden="true" class="carousel-control-next-icon"></span></button>

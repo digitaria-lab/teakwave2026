@@ -49,6 +49,8 @@ function get_external_link_setting($key, $default, $legacyKey = null) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
 
+    $newFaviconPath = null;
+
     try {
         $site_name = sanitize_plain_text($_POST['site_name'] ?? '', 150);
         $meta_title = sanitize_plain_text($_POST['meta_title'] ?? '', 180);
@@ -76,35 +78,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('Nama web tidak boleh kosong.');
         }
 
-        update_website_setting('site_name', $site_name, 'text');
-        update_website_setting('meta_title', $meta_title, 'text');
-        update_website_setting('meta_description', $meta_description, 'textarea');
-        update_website_setting('meta_keywords', $meta_keywords, 'textarea');
-        update_website_setting('timezone', $timezone, 'text');
-        update_website_setting('date_format', $date_format, 'text');
-        update_website_setting('time_format', $time_format, 'text');
-        update_website_setting('upload_max_filesize_mb', (string) $upload_max_filesize_mb, 'number');
-        update_website_setting('upload_allowed_extensions', $upload_allowed_extensions, 'textarea');
+        $oldFaviconPath = get_website_setting('favicon', '');
+        $newFaviconPath = upload_favicon_file('favicon');
 
-        update_website_setting('tokopedia_url', $tokopedia_url, 'url');
-        update_website_setting('shopee_url', $shopee_url, 'url');
-        update_website_setting('whatsapp_url', $whatsapp_url, 'url');
-        update_website_setting('instagram_url', $instagram_url, 'url');
-        update_website_setting('facebook_url', $facebook_url, 'url');
+        $settingsToSave = [
+            'site_name' => [$site_name, 'text'],
+            'meta_title' => [$meta_title, 'text'],
+            'meta_description' => [$meta_description, 'textarea'],
+            'meta_keywords' => [$meta_keywords, 'textarea'],
+            'timezone' => [$timezone, 'text'],
+            'date_format' => [$date_format, 'text'],
+            'time_format' => [$time_format, 'text'],
+            'upload_max_filesize_mb' => [(string) $upload_max_filesize_mb, 'number'],
+            'upload_allowed_extensions' => [$upload_allowed_extensions, 'textarea'],
+            'tokopedia_url' => [$tokopedia_url, 'url'],
+            'shopee_url' => [$shopee_url, 'url'],
+            'whatsapp_url' => [$whatsapp_url, 'url'],
+            'instagram_url' => [$instagram_url, 'url'],
+            'facebook_url' => [$facebook_url, 'url'],
+            // Sinkron dengan key footer lama.
+            'footer_instagram_url' => [$instagram_url, 'url'],
+            'footer_facebook_url' => [$facebook_url, 'url'],
+        ];
 
-        // Tetap sinkron dengan key footer lama agar konten lama tidak kembali memakai "#".
-        update_website_setting('footer_instagram_url', $instagram_url, 'url');
-        update_website_setting('footer_facebook_url', $facebook_url, 'url');
+        if ($newFaviconPath !== null) {
+            $settingsToSave['favicon'] = [$newFaviconPath, 'file'];
+        }
 
-        $favicon = upload_favicon_file('favicon');
+        $pdo->beginTransaction();
 
-        if ($favicon) {
-            update_website_setting('favicon', $favicon, 'file');
+        foreach ($settingsToSave as $settingKey => [$settingValue, $settingType]) {
+            if (!update_website_setting($settingKey, $settingValue, $settingType)) {
+                throw new RuntimeException('Gagal menyimpan setting: ' . $settingKey);
+            }
+        }
+
+        $pdo->commit();
+
+        // Hapus favicon lama hanya setelah database berhasil di-commit.
+        if ($newFaviconPath !== null && $oldFaviconPath !== '' && $oldFaviconPath !== $newFaviconPath) {
+            delete_local_upload($oldFaviconPath);
         }
 
         log_activity('update', 'website-settings', 'Mengubah konfigurasi website front.');
-        redirect('website-settings.php?updated=1');
-    } catch (Exception $e) {
+        redirect('website-settings.php?updated=1&v=' . time());
+    } catch (Throwable $e) {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        // Jangan tinggalkan file baru apabila penyimpanan database gagal.
+        if ($newFaviconPath !== null) {
+            delete_local_upload($newFaviconPath);
+        }
+
         $error = $e->getMessage();
     }
 }
@@ -125,6 +152,14 @@ $shopee_url = get_external_link_setting('shopee_url', 'https://shopee.co.id/teak
 $whatsapp_url = get_external_link_setting('whatsapp_url', 'https://wa.me/6282112345678');
 $instagram_url = get_external_link_setting('instagram_url', 'https://www.instagram.com/teak.wave/', 'footer_instagram_url');
 $facebook_url = get_external_link_setting('facebook_url', 'https://www.facebook.com/teakwave', 'footer_facebook_url');
+
+$faviconPreviewUrl = '';
+if ($favicon !== '') {
+    $normalizedFavicon = normalize_upload_storage_path($favicon);
+    $faviconFile = upload_storage_filesystem_path($normalizedFavicon);
+    $faviconVersion = is_file($faviconFile) ? (string) filemtime($faviconFile) : (string) time();
+    $faviconPreviewUrl = $normalizedFavicon . '?v=' . rawurlencode($faviconVersion);
+}
 
 try {
     $previewDate = new DateTime('now', new DateTimeZone($timezone));
@@ -153,7 +188,7 @@ include 'includes/sidebar.php';
                 </div>
 
                 <?php if(!empty($_GET['updated'])): ?>
-                    <div class="alert alert-success">Konfigurasi website berhasil diperbarui.</div>
+                    <div class="alert alert-success">Konfigurasi website berhasil diperbarui. Favicon dan metadata frontend memakai cache-buster terbaru.</div>
                 <?php endif; ?>
 
                 <?php if(!empty($error)): ?>
@@ -190,15 +225,15 @@ include 'includes/sidebar.php';
                         <div class="col-md-6">
                             <label class="form-label">Upload / Edit Favicon</label>
                             <input name="favicon" type="file" class="form-control" accept=".ico,.png,.jpg,.jpeg,.webp">
-                            <small class="text-muted">Format aman: ICO, PNG, JPG, WEBP. Maksimal 2MB.</small>
+                            <small class="text-muted">Format aman: ICO, PNG, JPG, WEBP. Batas ukuran mengikuti Upload Settings dan konfigurasi PHP server.</small>
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label">Current Favicon</label>
                             <div class="favicon-preview-box">
-                                <?php if($favicon): ?>
-                                    <img src="<?php echo e($favicon); ?>" alt="Favicon">
-                                    <code><?php echo e($favicon); ?></code>
+                                <?php if($faviconPreviewUrl): ?>
+                                    <img src="<?php echo e($faviconPreviewUrl); ?>" alt="Favicon aktif" width="48" height="48">
+                                    <code><?php echo e(normalize_upload_storage_path($favicon)); ?></code>
                                 <?php else: ?>
                                     <span class="text-muted">Belum ada favicon.</span>
                                 <?php endif; ?>

@@ -1,11 +1,59 @@
 <?php
-$siteName = 'Teakwave';
 $siteUrl = rtrim(
     (string) (getenv('TEAKWAVE_SITE_URL') ?: 'https://digitaria.click/teakwave'),
     '/'
 );
-$defaultWhatsappUrl = 'https://wa.me/6282112345678';
-$defaultMetaDescription = 'Teakwave adalah distributor perangkat jaringan nirkabel, fiber optic, router, switch, access point, dan solusi internet untuk kebutuhan bisnis di Indonesia.';
+
+// Muat setting frontend langsung dari database. Nilai hardcoded hanya menjadi
+// fallback apabila database belum siap, sehingga perubahan dari dashboard
+// benar-benar digunakan oleh halaman publik.
+$teakwaveWebsiteSettings = [];
+try {
+    $databaseConfig = __DIR__ . '/../utakatik/config/database.php';
+    if (is_file($databaseConfig)) {
+        require_once $databaseConfig;
+    }
+
+    if (isset($pdo) && $pdo instanceof PDO) {
+        $settingKeys = [
+            'site_name',
+            'meta_title',
+            'meta_description',
+            'meta_keywords',
+            'favicon',
+            'whatsapp_url',
+        ];
+        $placeholders = implode(',', array_fill(0, count($settingKeys), '?'));
+        $settingStmt = $pdo->prepare("
+            SELECT setting_key, setting_value
+            FROM website_settings
+            WHERE setting_key IN ($placeholders)
+            ORDER BY setting_key ASC, COALESCE(updated_at, created_at) DESC, id DESC
+        ");
+        $settingStmt->execute($settingKeys);
+
+        foreach ($settingStmt->fetchAll(PDO::FETCH_ASSOC) as $settingRow) {
+            $settingKey = (string) ($settingRow['setting_key'] ?? '');
+            if ($settingKey !== '' && !array_key_exists($settingKey, $teakwaveWebsiteSettings)) {
+                $teakwaveWebsiteSettings[$settingKey] = trim((string) ($settingRow['setting_value'] ?? ''));
+            }
+        }
+    }
+} catch (Throwable $ignored) {
+    $teakwaveWebsiteSettings = [];
+}
+
+$siteName = $teakwaveWebsiteSettings['site_name'] ?? 'Teakwave';
+if ($siteName === '') $siteName = 'Teakwave';
+
+$defaultMetaTitle = $teakwaveWebsiteSettings['meta_title'] ?? 'Teakwave | Distributor Perangkat Jaringan Nirkabel Indonesia';
+if ($defaultMetaTitle === '') $defaultMetaTitle = $siteName;
+
+$defaultMetaDescription = $teakwaveWebsiteSettings['meta_description']
+    ?? 'Teakwave adalah distributor perangkat jaringan nirkabel, fiber optic, router, switch, access point, dan solusi internet untuk kebutuhan bisnis di Indonesia.';
+$defaultMetaKeywords = $teakwaveWebsiteSettings['meta_keywords'] ?? '';
+$siteFavicon = $teakwaveWebsiteSettings['favicon'] ?? 'uploads/favicon_6a0621935cf2e5.50652961.png';
+$defaultWhatsappUrl = $teakwaveWebsiteSettings['whatsapp_url'] ?? 'https://wa.me/6282112345678';
 $defaultSocialImage = 'assets/img/banner-home-1.webp';
 
 /**

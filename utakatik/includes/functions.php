@@ -97,21 +97,23 @@ function upload_public_path($filename) {
 function normalize_upload_storage_path($path) {
     $path = trim(str_replace('\\', '/', (string) $path));
 
-    if ($path === '') return $path;
+    if ($path === '') return '';
 
-    if (str_starts_with($path, '../uploads/')) {
+    // Jangan mengubah URL eksternal.
+    if (preg_match('#^https?://#i', $path)) {
         return $path;
     }
 
-    if (str_starts_with($path, 'uploads/')) {
-        return '../' . $path;
+    // Hilangkan query string/cache-buster sebelum path disimpan kembali.
+    $path = preg_replace('/[?#].*$/', '', $path);
+
+    // Mendukung nilai lama berupa absolute filesystem path, /uploads/file,
+    // uploads/file, ../uploads/file, maupun folder upload lama dashboard.
+    if (preg_match('#(?:^|/)(?:utakatik/assets/uploads|assets/uploads|uploads)/([^/]+)$#i', $path, $matches)) {
+        return '../uploads/' . basename($matches[1]);
     }
 
-    if (str_starts_with($path, 'assets/uploads/')) {
-        return '../uploads/' . basename($path);
-    }
-
-    if (str_starts_with($path, 'utakatik/assets/uploads/')) {
+    if (str_starts_with($path, '../uploads/')) {
         return '../uploads/' . basename($path);
     }
 
@@ -122,7 +124,7 @@ function upload_storage_filesystem_path($storedPath) {
     $storedPath = normalize_upload_storage_path($storedPath);
 
     if (str_starts_with($storedPath, '../uploads/')) {
-        return __DIR__ . '/../' . $storedPath;
+        return dirname(__DIR__, 2) . '/uploads/' . basename($storedPath);
     }
 
     return $storedPath;
@@ -1047,7 +1049,15 @@ function get_website_setting($key, $default = '') {
     global $pdo;
 
     try {
-        $stmt = $pdo->prepare("SELECT setting_value FROM website_settings WHERE setting_key = ? LIMIT 1");
+        // Ambil data terbaru. Ini tetap bekerja bila database lama sempat
+        // memiliki setting_key duplikat karena unique index belum terpasang.
+        $stmt = $pdo->prepare("
+            SELECT setting_value
+            FROM website_settings
+            WHERE setting_key = ?
+            ORDER BY COALESCE(updated_at, created_at) DESC, id DESC
+            LIMIT 1
+        ");
         $stmt->execute([$key]);
         $value = $stmt->fetchColumn();
 
@@ -1060,21 +1070,43 @@ function get_website_setting($key, $default = '') {
 function update_website_setting($key, $value, $type = 'text') {
     global $pdo;
 
-    $stmt = $pdo->prepare("
-        INSERT INTO website_settings (setting_key, setting_value, setting_type, updated_at)
-        VALUES (?, ?, ?, NOW())
-        ON DUPLICATE KEY UPDATE
-            setting_value = VALUES(setting_value),
-            setting_type = VALUES(setting_type),
-            updated_at = NOW()
+    $key = trim((string) $key);
+    if ($key === '') {
+        throw new InvalidArgumentException('Key website setting tidak boleh kosong.');
+    }
+
+    // UPDATE dahulu supaya database lama tanpa UNIQUE(setting_key) tidak
+    // membuat baris duplikat yang menyebabkan nilai lama terus terbaca.
+    $update = $pdo->prepare("
+        UPDATE website_settings
+        SET setting_value = ?, setting_type = ?, updated_at = NOW()
+        WHERE setting_key = ?
     ");
-    return $stmt->execute([$key, $value, $type]);
+    $update->execute([(string) $value, (string) $type, $key]);
+
+    if ($update->rowCount() > 0) {
+        return true;
+    }
+
+    // rowCount() dapat 0 bila nilainya sama. Pastikan baris memang ada.
+    $exists = $pdo->prepare("SELECT id FROM website_settings WHERE setting_key = ? LIMIT 1");
+    $exists->execute([$key]);
+    if ($exists->fetchColumn() !== false) {
+        return true;
+    }
+
+    $insert = $pdo->prepare("
+        INSERT INTO website_settings (setting_key, setting_value, setting_type, created_at, updated_at)
+        VALUES (?, ?, ?, NOW(), NOW())
+    ");
+
+    return $insert->execute([$key, (string) $value, (string) $type]);
 }
 
 function upload_favicon_file($field, $targetDir = null) {
-    $targetDir = $targetDir ?: upload_storage_dir();
-
-    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) return null;
+    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
 
     if ($_FILES[$field]['error'] !== UPLOAD_ERR_OK) {
         throw new Exception('Favicon gagal diupload. Kode error: ' . $_FILES[$field]['error']);
@@ -1086,12 +1118,28 @@ function upload_favicon_file($field, $targetDir = null) {
         throw new Exception($result);
     }
 
-    if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+    // Pakai absolute filesystem path agar tidak bergantung pada current
+    // working directory PHP/hosting. Yang disimpan ke database tetap path publik.
+    $filesystemDir = $targetDir
+        ? rtrim((string) $targetDir, '/\\') . DIRECTORY_SEPARATOR
+        : dirname(__DIR__, 2) . '/uploads/';
+
+    if (!is_dir($filesystemDir) && !@mkdir($filesystemDir, 0755, true) && !is_dir($filesystemDir)) {
+        throw new Exception('Folder uploads tidak dapat dibuat. Periksa permission folder uploads.');
+    }
+
+    if (!is_writable($filesystemDir)) {
+        throw new Exception('Folder uploads tidak dapat ditulis. Gunakan permission folder 755 atau 775 sesuai hosting.');
+    }
 
     $filename = seo_file_name('favicon', $result, 'website');
-    $target = $targetDir . $filename;
+    $target = $filesystemDir . $filename;
 
-    return move_uploaded_file($_FILES[$field]['tmp_name'], $target) ? $target : null;
+    if (!move_uploaded_file($_FILES[$field]['tmp_name'], $target)) {
+        throw new Exception('Favicon gagal dipindahkan ke folder uploads.');
+    }
+
+    return '../uploads/' . $filename;
 }
 
 
